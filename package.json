@@ -1,0 +1,10 @@
+{
+  "name": "my-people",
+  "private": true,
+  "description": "A private, low-maintenance personal relationship tracker. No runtime dependencies.",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test": "node --test \"tests/*.test.js\""
+  }
+}

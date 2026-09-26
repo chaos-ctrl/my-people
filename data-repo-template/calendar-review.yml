@@ -1,0 +1,4 @@
+# Calendar events the sync couldn't match to a person. The app shows them under "Check these".
+pending: []
+# Calendar event ids you've dismissed or already handled; the sync never queues them again.
+dismissed: []

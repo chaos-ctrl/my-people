@@ -1,0 +1,50 @@
+# Sends the reminder digest through ntfy. Runs every hour; the script only sends at the day(s) and
+# hour chosen in settings.yml, so you change the schedule from the app, not here.
+# All the logic lives in the public repo chaos-ctrl/my-people (branch "stable").
+name: Reminders
+
+on:
+  schedule:
+    - cron: "7 * * * *"   # every hour at :07
+  workflow_dispatch:
+    inputs:
+      test:
+        description: "Send a test notification now"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: reminders
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Get my data
+        uses: actions/checkout@v4
+        with:
+          path: data
+          persist-credentials: false
+
+      - name: Get the scripts (bookmarked version)
+        uses: actions/checkout@v4
+        with:
+          repository: chaos-ctrl/my-people
+          ref: stable
+          path: app
+          persist-credentials: false
+
+      - name: Send the reminder if it's time
+        env:
+          NTFY_SERVER: ${{ secrets.NTFY_SERVER || 'https://ntfy.sh' }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          NTFY_TOKEN: ${{ secrets.NTFY_TOKEN }}
+          NTFY_EMAIL: ${{ secrets.NTFY_EMAIL }}
+          APP_URL: https://chaos-ctrl.github.io/my-people/
+          TEST: ${{ inputs.test }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: node app/scripts/reminders.mjs --data data

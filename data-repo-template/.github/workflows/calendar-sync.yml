@@ -1,0 +1,56 @@
+# Reads birthdays and anniversaries from your Google Calendar (one way: it never writes to Google)
+# and fills them into people/*.md. Unclear events go to calendar-review.yml ("Check these" in the app).
+# All the logic lives in the public repo chaos-ctrl/my-people (branch "stable").
+name: Calendar sync
+
+on:
+  schedule:
+    - cron: "23 4 * * *"   # every day at 04:23 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: calendar-sync
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Get my data
+        uses: actions/checkout@v4
+        with:
+          path: data
+
+      - name: Get the scripts (bookmarked version)
+        uses: actions/checkout@v4
+        with:
+          repository: chaos-ctrl/my-people
+          ref: stable
+          path: app
+          persist-credentials: false
+
+      - name: Sync birthdays and anniversaries
+        id: sync
+        env:
+          CALENDAR_ICS_URL: ${{ secrets.CALENDAR_ICS_URL }}
+        run: node app/scripts/calendar-sync.mjs --data data
+
+      - name: Save the changes
+        if: steps.sync.outputs.changed == 'true'
+        working-directory: data
+        env:
+          MESSAGE: ${{ steps.sync.outputs.message }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "$MESSAGE"
+          for attempt in 1 2 3; do
+            git push && exit 0
+            sleep 5
+            git pull --rebase
+          done
+          exit 1
