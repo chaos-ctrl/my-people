@@ -66,6 +66,7 @@ birthday_source: calendar   # calendar | manual
 partner:
   name: Julie
   birthday: 07-02
+  birthday_source: manual   # partners and children carry their own source
 anniversary:                # wedding anniversary
   date: 06-12               # MM-DD or YYYY-MM-DD
   with: Julie
@@ -73,6 +74,7 @@ anniversary:                # wedding anniversary
 children:
   - name: Léo
     birthday: 11-30
+    birthday_source: calendar
   - name: Emma
     birthday: ""            # unknown → shows in "still to find out"
 contacts:                   # newest first; capped at the last 100 entries
@@ -95,6 +97,8 @@ Met through climbing. Allergic to cats.
 
 Rules:
 - Every field except `name` is optional. Missing `frequency_days` defaults to `settings.yml → defaults.frequency_days`.
+- A date with no `*_source` is treated as `manual` (the calendar sync never overwrites it).
+- A person created by the app always has at least one `contacts` entry (see 3.1).
 - Unknown keys must be preserved on write (the app and AI agents must not drop fields they don't understand).
 - The three Markdown sections (`Ask about`, `Gift ideas`, `Notes`) are recognised by heading; any other
   content in the body is preserved verbatim.
@@ -144,16 +148,19 @@ anniversary, and English "anniversary" means wedding anniversary. Anniversary ke
 Events the sync could not match confidently. The app shows these in a "Check these" list.
 
 ```yaml
-- uid: "abc123@google.com"
-  summary: "Tante Mimi 🎂"
-  date: 04-18
-  kind: birthday            # birthday | anniversary
-  guessed_name: Tante Mimi
-  candidates: []            # slugs of possible matches, if any
-  first_seen: 2026-09-27
-dismissed:                  # uids the user dismissed; never re-queued
+pending:
+  - uid: "abc123@google.com"
+    summary: "Tante Mimi 🎂"
+    date: 04-18
+    kind: birthday          # birthday | anniversary | unknown
+    guessed_name: Tante Mimi
+    candidates: []          # slugs of possible matches, if any
+    first_seen: 2026-09-27
+dismissed:                  # uids the user dismissed or already handled; never re-queued
   - "def456@google.com"
 ```
+
+An empty file is `pending: []` and `dismissed: []`. (A bare list at the top level is read as `pending`.)
 
 ## 3. Web app (`my-people`)
 
@@ -181,6 +188,10 @@ dismissed:                  # uids the user dismissed; never re-queued
 **Person sheet** (bottom sheet on mobile, dialog on desktop): name, aliases, group, rhythm, birthday,
 partner + birthday, anniversary, children (add/remove rows), Ask about, Gift ideas, Notes, and contact
 history with "log a past contact" (date + type) and delete entries. Save / Cancel / Remove (with confirm).
+When **adding** a person, the last contact is required: an approximate choice ("This month", "About a year
+ago", "About 5 years ago"…) or an exact date, plus its type. So nobody starts in the grey "unknown" state;
+that state only occurs for files created elsewhere, and such people are sorted as ratio 1.2 but not counted as
+overdue (not in "Time to reach out", the overdue count or reminders).
 Dates entered as DD/MM or DD/MM/YYYY (French/European order) and stored as MM-DD / YYYY-MM-DD.
 
 **Settings**: reminders (all fields in `settings.yml → reminders`), calendar sync keywords, status
@@ -207,7 +218,9 @@ progress bar carry the same information.
 - **Token**: a fine-grained GitHub personal access token scoped to **only** `my-people-data`, with
   **Contents: read and write** and **Actions: read and write** (the latter only for the "send test
   notification" button; optional). Expiry recommended at 90 days; the app shows a warning 14 days before
-  expiry (read from the `github-authentication-token-expiration` response header).
+  expiry. GitHub doesn't expose the `github-authentication-token-expiration` header to browsers (CORS), so
+  the app asks for the expiry date when the token is pasted (editable in Settings) and uses the header
+  only if it becomes readable.
 - **Storage modes** (setting, per device):
   - *Remember, locked with fingerprint / face unlock* (default where supported, e.g. Chrome on Android
     and Windows Hello): the token is encrypted with AES-GCM using a key derived from a **WebAuthn passkey
@@ -225,8 +238,9 @@ progress bar carry the same information.
 - **No data at rest in the browser** by default: people data lives in memory only. An optional
   "offline cache" setting may store it encrypted with the same PIN-derived key.
 - Strict **Content-Security-Policy** meta tag: `default-src 'self'; connect-src https://api.github.com;
-  style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:`.
-  No analytics, no third-party scripts.
+  style-src 'self'; font-src 'self'; img-src 'self' data:; script-src 'self'` (plus `worker-src`,
+  `manifest-src`, `base-uri 'none'`, `form-action 'none'`, `object-src 'none'`). The font is vendored,
+  so Google Fonts isn't used. No analytics, no third-party scripts.
 - All user-provided text rendered with `textContent` or escaped; never `innerHTML` with raw data.
 - Two private repos option: nothing prevents moving the app to a private repo later if the user upgrades
   GitHub plans; the app must not assume Pages-specific paths.
@@ -254,8 +268,9 @@ screen (web app manifest + icons; a service worker only for caching the app shel
 ## 4. Scheduled jobs (run in `my-people-data`)
 
 Scripts live in `my-people/scripts/` (Node.js, no dependencies beyond vendored ones, or Python standard
-library — pick one and keep it dependency-free). Workflow files in `my-people-data/.github/workflows/`
-check out `my-people` at a pinned ref and run them.
+library — pick one and keep it dependency-free). Chosen: Node.js 20+, sharing `src/core/` with the app.
+Workflow files in `my-people-data/.github/workflows/` check out `my-people` at the `stable` branch (a
+bookmark the user moves forward with a pull request from `main`) and run them.
 
 ### 4.1 Reminders — `reminders.yml`
 
@@ -285,8 +300,10 @@ check out `my-people` at a pinned ref and run them.
 - Classify by keywords from `settings.yml` (case-insensitive, accent-insensitive, emoji matched literally):
   anniversary keywords first, then birthday keywords. Event titles are not standardised and may contain
   abbreviations and typos ("bday", "b-day", "birtday", "bithday", "anniv", "anniverssaire"), so each word
-  of the title is also compared to keywords of 6+ letters with an edit distance up to `fuzzy_max_distance`.
-  Shorter keywords (bday, anniv, annif…) must match exactly. Events matching neither are ignored (not queued),
+  of the title is also compared to keywords of 6+ letters with an edit distance up to `fuzzy_max_distance`
+  (adjacent transpositions count as one edit; at most 1 edit for 6–7-letter keywords so names like "Marine"
+  aren't read as "mariage"; words that are known people's names are never treated as typos). Exact matches
+  win over fuzzy ones. Shorter keywords (bday, anniv, annif…) must match exactly. Events matching neither are ignored (not queued),
   unless they are yearly all-day events whose summary is only a person-like name — those go to review
   as `kind: unknown`.
 - Extract the name: strip keywords (including their fuzzy matches), emoji, possessives (`'s`, `’s`),
@@ -298,7 +315,8 @@ check out `my-people` at a pinned ref and run them.
   (skipping UIDs in `dismissed` and UIDs already queued).
 - On match: set the birthday/anniversary (MM-DD; the year is not used because events don't start on the
   birth year) and `*_source: calendar`. Never overwrite a field whose source is `manual`. Never delete
-  anything.
+  anything. If two events in one run give different dates for the same field, the first wins and the other
+  goes to review.
 - Commit once per run with a summary message (`Calendar sync: 3 updated, 2 to review`), only if
   something changed.
 - Calendar-derived birthdays appear in the app and reminders like any other.

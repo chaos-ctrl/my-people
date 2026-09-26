@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src https://api.github.com; style-src 'self'; font-src 'self'; img-src 'self' data:; script-src 'self'; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#EEF1F4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#131820" media="(prefers-color-scheme: dark)">
+<meta name="description" content="A private, calm tracker for keeping in touch with the people who matter.">
+<title>My people</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+<link rel="preload" href="assets/fonts/bricolage-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/css/app.css">
+<script src="src/app/theme.js"></script>
+<script type="module" src="src/app/main.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<main id="main" tabindex="-1">
+  <noscript><p class="banner">My people needs JavaScript to run.</p></noscript>
+
+  <!-- First run: connect to the data repository -->
+  <section id="view-setup" class="view" hidden aria-labelledby="setup-title">
+    <h1 id="setup-title">My people</h1>
+    <p class="sub">Your people live in your private GitHub repository. Connect this device to it.</p>
+    <form id="setup-form" class="panel" novalidate>
+      <div id="setup-step-token">
+        <label for="setup-repo">Data repository</label>
+        <input class="field" id="setup-repo" autocomplete="off" spellcheck="false" required>
+        <label for="setup-token">Access token</label>
+        <input class="field" id="setup-token" type="password" autocomplete="off" spellcheck="false" required aria-describedby="setup-token-hint">
+        <p class="hint" id="setup-token-hint">A fine-grained token that can only see your data repository. See <a href="https://github.com/chaos-ctrl/my-people/blob/main/docs/SETUP.md#3-create-the-access-token" target="_blank" rel="noopener">the setup guide</a>, step 3.</p>
+        <label for="setup-expiry">Token expiry date <span class="opt">(optional)</span></label>
+        <input class="field" id="setup-expiry" inputmode="numeric" placeholder="DD/MM/YYYY" autocomplete="off" aria-describedby="setup-expiry-hint">
+        <p class="hint" id="setup-expiry-hint">GitHub shows it when you create the token. You'll get a reminder 14 days before.</p>
+      </div>
+      <fieldset id="setup-step-storage" hidden>
+        <legend>How should this device remember the token?</legend>
+        <div id="setup-modes" class="choices"></div>
+        <div id="setup-pin-box">
+          <label for="setup-pin">Choose a PIN <span class="opt">(at least 6 digits)</span></label>
+          <input class="field" id="setup-pin" type="password" inputmode="numeric" autocomplete="new-password" minlength="6">
+          <label for="setup-pin2">Type the PIN again</label>
+          <input class="field" id="setup-pin2" type="password" inputmode="numeric" autocomplete="new-password" minlength="6">
+          <p class="hint" id="setup-pin-hint"></p>
+        </div>
+      </fieldset>
+      <p class="error" id="setup-error" role="alert"></p>
+      <div class="actions end">
+        <button type="button" class="btn ghost" id="setup-back" hidden>Back</button>
+        <button type="submit" class="btn" id="setup-next">Connect</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- Locked -->
+  <section id="view-lock" class="view" hidden aria-labelledby="lock-title">
+    <h1 id="lock-title">My people</h1>
+    <p class="sub" id="lock-sub">Locked.</p>
+    <form id="lock-form" class="panel" novalidate>
+      <button type="button" class="btn wide" id="lock-passkey" hidden>Unlock with fingerprint or face</button>
+      <div id="lock-pin-box" hidden>
+        <label for="lock-pin">PIN</label>
+        <input class="field" id="lock-pin" type="password" inputmode="numeric" autocomplete="current-password">
+      </div>
+      <div id="lock-token-box" hidden>
+        <label for="lock-token">Access token</label>
+        <input class="field" id="lock-token" type="password" autocomplete="off" spellcheck="false">
+        <p class="hint">This device doesn't remember the token, so it's needed each time.</p>
+      </div>
+      <p class="error" id="lock-error" role="alert"></p>
+      <div class="actions end">
+        <button type="button" class="linkish" id="lock-use-pin" hidden>Use PIN instead</button>
+        <button type="submit" class="btn" id="lock-submit">Unlock</button>
+      </div>
+    </form>
+    <p class="quiet"><button type="button" class="linkish" id="lock-forget">Forgot your PIN? Forget this device</button></p>
+  </section>
+
+  <!-- Home -->
+  <section id="view-home" class="view" hidden aria-labelledby="home-title">
+    <header class="top">
+      <div>
+        <h1 id="home-title">My people</h1>
+        <p class="sub" id="summary" aria-live="polite">Loading…</p>
+      </div>
+      <nav class="topnav" aria-label="App">
+        <button type="button" class="btn ghost small" id="go-settings">Settings</button>
+        <button type="button" class="btn ghost small" id="lock-now">Lock</button>
+      </nav>
+    </header>
+    <div id="banners"></div>
+
+    <h2 id="reach-title">Time to reach out</h2>
+    <div class="reach" id="reach" aria-labelledby="reach-title"></div>
+
+    <h2 id="coming-title">Coming up <span class="h-sub">next 30 days</span></h2>
+    <div id="coming" aria-labelledby="coming-title"></div>
+
+    <div id="review-box" hidden>
+      <h2 id="review-title">Check these</h2>
+      <p class="hint">From your calendar, but not matched to anyone for sure.</p>
+      <div id="review" aria-labelledby="review-title"></div>
+    </div>
+
+    <h2 id="everyone-title">Everyone</h2>
+    <div class="tools">
+      <input class="field" id="search" type="search" placeholder="Search" aria-label="Search people" autocomplete="off">
+      <button type="button" class="btn" id="add-person">Add person</button>
+    </div>
+    <div class="chips" id="groups" role="group" aria-label="Filter by group"></div>
+    <div class="list" id="list" aria-labelledby="everyone-title"></div>
+    <p class="missing" id="missing"></p>
+  </section>
+
+  <!-- Settings -->
+  <section id="view-settings" class="view" hidden aria-labelledby="settings-title">
+    <header class="top">
+      <h1 id="settings-title">Settings</h1>
+      <nav class="topnav" aria-label="Settings"><button type="button" class="btn ghost small" id="settings-back">Done</button></nav>
+    </header>
+    <div id="settings-banners"></div>
+    <form id="settings-form" novalidate></form>
+    <div id="device-settings"></div>
+  </section>
+</main>
+
+<dialog id="sheet" aria-labelledby="sheet-title">
+  <form class="sheet" id="sheet-form" novalidate>
+    <h3 id="sheet-title">Person</h3>
+    <div id="sheet-body"></div>
+    <p class="error" id="sheet-error" role="alert"></p>
+    <div class="actions">
+      <button type="button" class="btn danger" id="sheet-remove">Remove</button>
+      <span class="actions-right">
+        <button type="button" class="btn ghost" id="sheet-cancel">Cancel</button>
+        <button type="submit" class="btn" id="sheet-save">Save</button>
+      </span>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="picker" aria-labelledby="picker-title">
+  <form class="sheet" id="picker-form" novalidate>
+    <h3 id="picker-title">Attach to someone</h3>
+    <div id="picker-body"></div>
+    <p class="error" id="picker-error" role="alert"></p>
+    <div class="actions end">
+      <button type="button" class="btn ghost" id="picker-cancel">Cancel</button>
+      <button type="submit" class="btn" id="picker-ok">Attach</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="info" aria-labelledby="info-title">
+  <div class="sheet">
+    <h3 id="info-title"></h3>
+    <div id="info-body"></div>
+    <div class="actions end"><button type="button" class="btn" id="info-close">Close</button></div>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>
