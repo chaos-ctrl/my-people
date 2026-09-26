@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>My people</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,750&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#EEF1F4; --surface:#FFFFFF; --ink:#1B2430; --muted:#5F6B7A; --line:#D8DEE5;
+  --fresh:#4E8B6B; --soon:#C99A2E; --over:#D8692F; --long:#B8322A; --none:#8C96A3;
+  --accent:#2F4B7C;
+  --font:"Bricolage Grotesque", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#131820; --surface:#1C232D; --ink:#E7ECF2; --muted:#9AA6B4; --line:#2C3542;
+    --fresh:#6DB08C; --soon:#E0B550; --over:#EC8550; --long:#E0544A; --none:#7A8492; --accent:#8FB0E8;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#131820; --surface:#1C232D; --ink:#E7ECF2; --muted:#9AA6B4; --line:#2C3542;
+  --fresh:#6DB08C; --soon:#E0B550; --over:#EC8550; --long:#E0544A; --none:#7A8492; --accent:#8FB0E8;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.45}
+main{max-width:640px;margin:0 auto;padding:20px 16px 96px}
+h1{font-size:2.1rem;font-weight:750;letter-spacing:-.02em;margin:8px 0 4px;line-height:1.1}
+h2{font-size:1.15rem;font-weight:650;margin:28px 0 10px}
+.sub{color:var(--muted);margin:0 0 8px}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.banner{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--muted);font-size:.9rem;margin:12px 0}
+
+/* Reach-out strip */
+.reach{display:grid;gap:10px}
+.reach .card{display:flex;align-items:center;gap:12px;padding:14px;border-radius:14px;background:var(--surface);border:2px solid var(--st);text-align:left;width:100%}
+.reach .card .who{flex:1;min-width:0}
+.reach .card .name{font-weight:650;font-size:1.1rem}
+.reach .card .when{color:var(--st);font-weight:600;font-size:.92rem}
+.calm{color:var(--muted);background:var(--surface);border-radius:14px;padding:16px;border:1px dashed var(--line)}
+
+/* People list */
+.tools{display:flex;gap:8px;margin:0 0 10px}
+.tools input{flex:1;min-width:0;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface)}
+.btn{border:0;border-radius:10px;padding:10px 14px;background:var(--accent);color:#fff;font-weight:600}
+:root[data-theme="dark"] .btn{color:#10151c}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn{color:#10151c}}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.danger{background:transparent;color:var(--long);border:1px solid var(--long)}
+.list{display:grid;gap:6px}
+.row{display:grid;grid-template-columns:40px 1fr auto;align-items:center;gap:12px;background:var(--surface);border-radius:12px;padding:10px 10px 10px 12px;border:1px solid var(--line);position:relative;overflow:hidden}
+.row .open{all:unset;cursor:pointer;display:contents}
+.dot{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:700;color:#fff;background:var(--st)}
+.row .name{font-weight:600}
+.row .meta{color:var(--muted);font-size:.86rem}
+.fade{position:absolute;left:0;bottom:0;height:4px;background:var(--st);width:var(--w)}
+.log{border:1px solid var(--line);background:transparent;border-radius:999px;padding:8px 12px;font-size:.88rem;font-weight:600;white-space:nowrap}
+.chooser{display:flex;gap:6px}
+.chooser button{border:1px solid var(--st);background:var(--surface);color:var(--ink);border-radius:999px;padding:8px 10px;font-size:.86rem;font-weight:600}
+
+/* Birthdays */
+.bday{display:flex;justify-content:space-between;gap:10px;padding:10px 12px;background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-bottom:6px}
+.bday .d{color:var(--muted);white-space:nowrap}
+.missing{color:var(--muted);font-size:.92rem}
+
+/* Sheet */
+dialog{border:0;border-radius:16px 16px 0 0;padding:0;width:100%;max-width:640px;margin:auto auto 0;background:var(--surface);color:var(--ink);max-height:92vh}
+dialog::backdrop{background:rgba(10,14,20,.45)}
+@media (min-width:700px){dialog{border-radius:16px;margin:auto}}
+.sheet{padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));overflow:auto;max-height:92vh}
+.sheet h3{margin:0 0 12px;font-size:1.4rem}
+label{display:block;font-size:.88rem;color:var(--muted);margin:12px 0 4px}
+.field{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg)}
+textarea.field{min-height:76px;resize:vertical}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kid{display:grid;grid-template-columns:1fr 110px 36px;gap:6px;margin-bottom:6px}
+.kid button{border:1px solid var(--line);background:transparent;border-radius:8px}
+.actions{display:flex;gap:8px;justify-content:space-between;margin-top:18px;flex-wrap:wrap}
+.history{margin:6px 0 0;padding:0;list-style:none;font-size:.9rem}
+.history li{padding:6px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:8px}
+.logrow{display:grid;grid-template-columns:1fr 1fr auto;gap:6px}
+.hint{font-size:.82rem;color:var(--muted)}
+@media (prefers-reduced-motion:no-preference){.row,.card{transition:border-color .3s}}
+</style>
+</head>
+<body>
+<main>
+  <h1>My people</h1>
+  <p class="sub" id="summary">Loading…</p>
+  <div id="banner"></div>
+
+  <h2>Time to reach out</h2>
+  <div class="reach" id="reach"></div>
+
+  <h2>Birthdays in the next 30 days</h2>
+  <div id="bdays"></div>
+
+  <h2>Everyone</h2>
+  <div class="tools">
+    <input id="search" type="search" placeholder="Search names or notes" aria-label="Search">
+    <button class="btn" id="addBtn">Add person</button>
+  </div>
+  <div class="list" id="list"></div>
+  <p class="missing" id="missing"></p>
+</main>
+
+<dialog id="sheet" aria-labelledby="sheetTitle">
+  <form class="sheet" id="form" method="dialog">
+    <h3 id="sheetTitle">Person</h3>
+    <label for="f-name">Name</label>
+    <input class="field" id="f-name" required>
+    <div class="two">
+      <div><label for="f-circle">Group</label>
+        <input class="field" id="f-circle" placeholder="Friends, family, work…" list="circles"></div>
+      <div><label for="f-freq">See or talk every</label>
+        <select class="field" id="f-freq">
+          <option value="14">2 weeks</option><option value="30">month</option>
+          <option value="60">2 months</option><option value="90">3 months</option>
+          <option value="180">6 months</option><option value="365">year</option>
+        </select></div>
+    </div>
+    <datalist id="circles"></datalist>
+    <div class="two">
+      <div><label for="f-bday">Birthday</label><input class="field" id="f-bday" placeholder="DD/MM or DD/MM/YYYY"></div>
+      <div><label for="f-partner">Partner</label><input class="field" id="f-partner" placeholder="Name"></div>
+    </div>
+    <label for="f-pbday">Partner's birthday</label>
+    <input class="field" id="f-pbday" placeholder="DD/MM">
+    <label>Children</label>
+    <div id="kids"></div>
+    <button type="button" class="btn ghost" id="addKid">Add child</button>
+    <p class="hint">Leave a birthday empty if you don't know it yet. It'll show up in the "still to find out" list.</p>
+    <label for="f-ask">Things to ask about</label>
+    <textarea class="field" id="f-ask" placeholder="New job, the house move, her marathon…"></textarea>
+    <label for="f-gifts">Gift ideas</label>
+    <textarea class="field" id="f-gifts" placeholder="Things they mentioned wanting"></textarea>
+    <label for="f-notes">Other notes</label>
+    <textarea class="field" id="f-notes"></textarea>
+
+    <div id="histBox">
+      <label>Log a past contact</label>
+      <div class="logrow">
+        <input class="field" type="date" id="l-date" aria-label="Date">
+        <select class="field" id="l-type" aria-label="Type"><option>Seen</option><option>Call</option><option>Message</option></select>
+        <button type="button" class="btn ghost" id="l-add">Add</button>
+      </div>
+      <ul class="history" id="history"></ul>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn danger" id="delBtn">Remove</button>
+      <span style="display:flex;gap:8px">
+        <button type="button" class="btn ghost" id="cancelBtn">Cancel</button>
+        <button type="submit" class="btn" id="saveBtn">Save</button>
+      </span>
+    </div>
+  </form>
+</dialog>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const DAY = 86400000;
+  let people = [];          // [{id, ...data}]
+  let store = null;         // adapter with list/subscribe/save/remove
+  let editing = null;       // id or null
+  let draftLog = [];
+  let openChooser = null;
+
+  // ---------- dates ----------
+  const today = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
+  const iso = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  const parseIso = s => { const [y,m,d] = s.split("-").map(Number); return new Date(y,m-1,d); };
+  function parseBday(s){
+    s = (s||"").trim(); if(!s) return "";
+    const m = s.match(/^(\d{1,2})[\/.\-](\d{1,2})(?:[\/.\-](\d{4}))?$/);
+    if(!m) return null;
+    const d=+m[1], mo=+m[2]; if(d<1||d>31||mo<1||mo>12) return null;
+    return (m[3]?m[3]+"-":"")+String(mo).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+  }
+  function showBday(s){ if(!s) return ""; const p=s.split("-"); return p.length===3? `${p[2]}/${p[1]}/${p[0]}` : `${p[1]}/${p[0]}`; }
+  function nextBday(s){
+    if(!s) return null; const p=s.split("-"); const mo=+p[p.length-2], d=+p[p.length-1];
+    const t=today(); let n=new Date(t.getFullYear(),mo-1,d); if(n<t) n=new Date(t.getFullYear()+1,mo-1,d);
+    const year = p.length===3? +p[0] : null;
+    return {date:n, days:Math.round((n-t)/DAY), age: year? n.getFullYear()-year : null};
+  }
+  const fmtAgo = n => n===0?"today":n===1?"yesterday":n<14?`${n} days ago`:n<60?`${Math.round(n/7)} weeks ago`:n<730?`${Math.round(n/30)} months ago`:`${Math.round(n/365)} years ago`;
+  const freqLabel = f => ({14:"every 2 weeks",30:"monthly",60:"every 2 months",90:"every 3 months",180:"every 6 months",365:"yearly"})[f]||`every ${f} days`;
+
+  // ---------- status ----------
+  function status(p){
+    const log = p.log||[];
+    if(!log.length) return {key:"none", ratio:1.2, days:null, color:"var(--none)"};
+    const last = log.reduce((a,b)=> a.date>b.date?a:b);
+    const days = Math.max(0, Math.round((today()-parseIso(last.date))/DAY));
+    const ratio = days/(p.freq||30);
+    const key = ratio<0.6?"fresh":ratio<1?"soon":ratio<1.5?"over":"long";
+    return {key, ratio, days, last, color:`var(--${key})`};
+  }
+  const initials = n => n.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase();
+  const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+  // ---------- render ----------
+  function render(){
+    const q = $("#search").value.trim().toLowerCase();
+    const withS = people.map(p=>({p, s:status(p)})).sort((a,b)=>b.s.ratio-a.s.ratio);
+    const due = withS.filter(x=>x.s.ratio>=1);
+    $("#summary").textContent = people.length
+      ? `${people.length} people · ${due.length} overdue`
+      : "Add the people you want to keep close.";
+
+    // reach out: top 3
+    const top = due.slice(0,3);
+    $("#reach").innerHTML = top.length ? top.map(({p,s})=>`
+      <button class="card" style="--st:${s.color}" data-open="${p.id}">
+        <span class="dot" aria-hidden="true">${esc(initials(p.name))}</span>
+        <span class="who"><span class="name">${esc(p.name)}</span><br>
+          <span class="when">${s.days===null?"No contact logged yet":"Last contact "+fmtAgo(s.days)}</span>
+          ${p.ask?`<br><span class="meta" style="color:var(--muted);font-size:.88rem">Ask about: ${esc(p.ask.split("\n")[0])}</span>`:""}
+        </span>
+      </button>`).join("")
+      : `<div class="calm">${people.length?"Everyone's within their usual rhythm.":"Nobody here yet."}</div>`;
+
+    // birthdays
+    const bd=[]; const missing=[];
+    for(const p of people){
+      const add=(who,rel,b)=>{ if(!b){ if(rel) missing.push(`${who} (${rel})`); return; } const n=nextBday(b); if(n.days<=30) bd.push({who,rel,n}); };
+      add(p.name,"",p.bday);
+      if(p.partner) add(p.partner,`${p.name}'s partner`,p.pbday);
+      for(const k of (p.kids||[])) if(k.name) add(k.name,`${p.name}'s child`,k.bday);
+    }
+    bd.sort((a,b)=>a.n.days-b.n.days);
+    $("#bdays").innerHTML = bd.length ? bd.map(b=>`<div class="bday"><span>${esc(b.who)}${b.rel?` <span class="missing">· ${esc(b.rel)}</span>`:""}${b.n.age?` <span class="missing">turns ${b.n.age}</span>`:""}</span><span class="d">${b.n.days===0?"Today":b.n.days===1?"Tomorrow":b.n.date.toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</span></div>`).join("")
+      : `<div class="calm">No birthdays coming up.</div>`;
+    $("#missing").textContent = missing.length ? `Birthdays still to find out: ${missing.join(", ")}.` : "";
+
+    // list
+    const shown = withS.filter(({p})=>!q || [p.name,p.circle,p.partner,p.ask,p.gifts,p.notes,...(p.kids||[]).map(k=>k.name)].join(" ").toLowerCase().includes(q));
+    $("#list").innerHTML = shown.map(({p,s})=>{
+      const w = Math.min(s.ratio,2)/2*100;
+      const meta = [p.circle, freqLabel(p.freq), s.days===null?"never logged":fmtAgo(s.days)].filter(Boolean).join(" · ");
+      const right = openChooser===p.id
+        ? `<span class="chooser">${["Seen","Call","Message"].map(t=>`<button data-quick="${p.id}" data-type="${t}">${t}</button>`).join("")}</span>`
+        : `<button class="log" data-choose="${p.id}" aria-label="Log contact with ${esc(p.name)}">Log contact</button>`;
+      return `<div class="row" style="--st:${s.color};--w:${w}%">
+        <button class="open" data-open="${p.id}" aria-label="Open ${esc(p.name)}"><span class="dot">${esc(initials(p.name))}</span><span><span class="name">${esc(p.name)}</span><br><span class="meta">${esc(meta)}</span></span></button>
+        ${right}<span class="fade" aria-hidden="true"></span></div>`;
+    }).join("") || (people.length?`<div class="calm">No matches.</div>`:"");
+
+    const circles=[...new Set(people.map(p=>p.circle).filter(Boolean))];
+    $("#circles").innerHTML = circles.map(c=>`<option value="${esc(c)}">`).join("");
+  }
+
+  // ---------- events ----------
+  document.addEventListener("click", async e=>{
+    const t = e.target.closest("[data-open],[data-choose],[data-quick]");
+    if(!t) { if(openChooser && !e.target.closest(".chooser")){ openChooser=null; render(); } return; }
+    if(t.dataset.choose){ openChooser=t.dataset.choose; render(); return; }
+    if(t.dataset.quick){
+      const p=people.find(x=>x.id===t.dataset.quick); openChooser=null;
+      const log=[...(p.log||[]),{date:iso(today()),type:t.dataset.type}].slice(-60);
+      await save({...p, log}); return;
+    }
+    if(t.dataset.open) openSheet(t.dataset.open);
+  });
+  $("#search").addEventListener("input", render);
+  $("#addBtn").addEventListener("click", ()=>openSheet(null));
+
+  // ---------- sheet ----------
+  function kidRow(k={}){
+    const d=document.createElement("div"); d.className="kid";
+    d.innerHTML=`<input class="field kname" placeholder="Name" value="${esc(k.name||"")}" aria-label="Child's name"><input class="field kbday" placeholder="DD/MM" value="${esc(showBday(k.bday))}" aria-label="Child's birthday"><button type="button" aria-label="Remove child">✕</button>`;
+    d.querySelector("button").onclick=()=>d.remove();
+    $("#kids").appendChild(d);
+  }
+  function renderHistory(){
+    const l=[...draftLog].sort((a,b)=>b.date.localeCompare(a.date));
+    $("#history").innerHTML = l.length ? l.slice(0,12).map((x,i)=>`<li><span>${parseIso(x.date).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}</span><span>${esc(x.type)} <button type="button" class="log" data-del="${x.date}|${x.type}" style="padding:2px 8px">✕</button></span></li>`).join("") : `<li class="hint">No contacts logged yet.</li>`;
+  }
+  $("#history").addEventListener("click", e=>{
+    const b=e.target.closest("[data-del]"); if(!b) return;
+    const [d,t]=b.dataset.del.split("|"); const i=draftLog.findIndex(x=>x.date===d&&x.type===t);
+    if(i>-1){ draftLog.splice(i,1); renderHistory(); }
+  });
+  $("#l-add").onclick=()=>{ const d=$("#l-date").value; if(!d) return; draftLog.push({date:d,type:$("#l-type").value}); renderHistory(); };
+  $("#addKid").onclick=()=>kidRow();
+  $("#cancelBtn").onclick=()=>$("#sheet").close();
+
+  function openSheet(id){
+    editing=id; const p = id? people.find(x=>x.id===id) : {freq:30};
+    $("#sheetTitle").textContent = id? p.name : "Add person";
+    $("#f-name").value=p.name||""; $("#f-circle").value=p.circle||""; $("#f-freq").value=String(p.freq||30);
+    $("#f-bday").value=showBday(p.bday); $("#f-partner").value=p.partner||""; $("#f-pbday").value=showBday(p.pbday);
+    $("#f-ask").value=p.ask||""; $("#f-gifts").value=p.gifts||""; $("#f-notes").value=p.notes||"";
+    $("#kids").innerHTML=""; (p.kids||[]).forEach(kidRow);
+    draftLog=[...(p.log||[])]; $("#l-date").value=iso(today()); renderHistory();
+    $("#delBtn").style.visibility = id?"visible":"hidden";
+    $("#sheet").showModal();
+  }
+
+  $("#form").addEventListener("submit", async e=>{
+    e.preventDefault();
+    const name=$("#f-name").value.trim(); if(!name){ $("#f-name").focus(); return; }
+    const bad=[]; const pb=(el,label)=>{ const v=parseBday(el.value); if(v===null){bad.push(label);return "";} return v; };
+    const data={
+      name, circle:$("#f-circle").value.trim(), freq:+$("#f-freq").value,
+      bday:pb($("#f-bday"),"birthday"), partner:$("#f-partner").value.trim(), pbday:pb($("#f-pbday"),"partner's birthday"),
+      kids:[...document.querySelectorAll("#kids .kid")].map(r=>({name:r.querySelector(".kname").value.trim(), bday:pb(r.querySelector(".kbday"),"child's birthday")})).filter(k=>k.name),
+      ask:$("#f-ask").value.trim(), gifts:$("#f-gifts").value.trim(), notes:$("#f-notes").value.trim(),
+      log:draftLog.slice(-60)
+    };
+    if(bad.length){ alert(`Check the ${bad.join(", ")}: use DD/MM or DD/MM/YYYY.`); return; }
+    $("#saveBtn").disabled=true;
+    try{ await save({...data, id: editing||undefined}); $("#sheet").close(); }
+    finally{ $("#saveBtn").disabled=false; }
+  });
+  $("#delBtn").onclick=async()=>{
+    if(!editing) return; const p=people.find(x=>x.id===editing);
+    if(!confirm(`Remove ${p.name}? Their notes will be deleted.`)) return;
+    await store.remove(editing); $("#sheet").close();
+  };
+
+  async function save(p){
+    try{ await store.save(p); }
+    catch(err){ $("#banner").innerHTML=`<div class="banner">Couldn't save (${esc(err.code||err.message)}). Try again in a moment.</div>`; throw err; }
+  }
+
+  // ---------- storage ----------
+  function localStore(){
+    const KEY="my-people-v1";
+    const read=()=>{ try{ return JSON.parse(localStorage.getItem(KEY)||"[]"); }catch{ return []; } };
+    const write=a=>{ try{ localStorage.setItem(KEY,JSON.stringify(a)); }catch{} };
+    return {
+      start(){ people=read(); render(); },
+      async save(p){ const a=read(); if(!p.id) p.id="p"+Date.now().toString(36); const i=a.findIndex(x=>x.id===p.id); i>-1?a[i]=p:a.push(p); write(a); people=a; render(); },
+      async remove(id){ const a=read().filter(x=>x.id!==id); write(a); people=a; render(); }
+    };
+  }
+  function dbStore(db, uid){
+    const col = db.doc(`data/users/${uid}/crm`).collection("people");
+    return {
+      start(){
+        col.onSnapshot(snap=>{ people=snap.docs.map(d=>({id:d.id,...d.data()})); render(); },
+          err=>{ $("#banner").innerHTML=`<div class="banner">Lost connection to your saved list (${esc(err.code)}). Reload the page.</div>`; });
+      },
+      async save(p){ const {id,...data}=p; const ref = id? col.doc(id) : col.doc(); await ref.set(JSON.parse(JSON.stringify(data))); },
+      async remove(id){ await col.doc(id).delete(); }
+    };
+  }
+
+  render();
+  (async()=>{
+    let db=null, uid=null;
+    try{
+      if(window.claude && typeof window.claude.use==="function"){
+        const [d,u] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
+        db=d; uid = u ? await u.id() : null;
+      }
+    }catch{}
+    if(db && uid){ store=dbStore(db,uid); }
+    else{
+      store=localStore();
+      $("#banner").innerHTML=`<div class="banner">Saved on this device only. Open it from your Claude account to keep it in sync across devices.</div>`;
+    }
+    store.start();
+  })();
+})();
+</script>
+</body>
+</html>
