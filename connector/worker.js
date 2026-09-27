@@ -19,7 +19,7 @@ export async function handle(request, env) {
   if (path === '/register' && request.method === 'POST') return register(request, env);
   if (path === '/authorize' && request.method === 'GET') return authorize(url, env);
   if (path === '/authorize' && request.method === 'POST') return confirm(request, env);
-  if (path === '/callback' && request.method === 'GET') return callback(url, env);
+  if (path === '/callback' && request.method === 'GET') return callback(request, env);
   if (path === '/token' && request.method === 'POST') return token(request, env);
   if (path === '/mcp' || path === '/sse') {
     if (request.method !== 'POST') return new Response('Use POST (Streamable HTTP).', { status: 405, headers: { allow: 'POST', ...CORS } });

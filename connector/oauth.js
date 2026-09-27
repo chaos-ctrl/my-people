@@ -115,18 +115,23 @@ export async function confirm(request, env) {
   const url = new URL(request.url);
   const form = new URLSearchParams(await request.text().catch(() => ''));
   const c = await unseal(env.TOKEN_SECRET, 'consent', form.get('consent'));
-  const cookie = (request.headers.get('cookie') ?? '').match(/(?:^|;\s*)mp_consent=([\w-]+)/)?.[1];
+  const cookie = cookieOf(request, 'mp_consent');
   const site = request.headers.get('sec-fetch-site');
   if (!c || !cookie || cookie !== c.n || (site && site !== 'same-origin')) {
     return page('Please start again', 'This confirmation expired or didn’t come from this page. Start connecting again from your assistant.');
   }
-  const clear = { 'set-cookie': 'mp_consent=; Path=/authorize; Max-Age=0; HttpOnly; Secure; SameSite=Lax' };
-  if (form.get('action') !== 'allow') return withHeaders(redirect(c.r, { error: 'access_denied', state: c.s }), clear);
-  const state = await seal(env.TOKEN_SECRET, 'state', { c: c.c, r: c.r, cc: c.cc, s: c.s }, 900);
-  return withHeaders(redirect(`${GITHUB}/login/oauth/authorize`, { client_id: env.GITHUB_CLIENT_ID, redirect_uri: `${url.origin}/callback`, state }), clear);
+  const clear = 'mp_consent=; Path=/authorize; Max-Age=0; HttpOnly; Secure; SameSite=Lax';
+  if (form.get('action') !== 'allow') return withCookies(redirect(c.r, { error: 'access_denied', state: c.s }), [clear]);
+  // The GitHub leg is bound to this browser too: otherwise someone could confirm in their own browser, keep
+  // the GitHub link, and get the owner (already signed in, GitHub not asking again) to open it.
+  const n = b64u(crypto.getRandomValues(new Uint8Array(16)));
+  const state = await seal(env.TOKEN_SECRET, 'state', { c: c.c, r: c.r, cc: c.cc, s: c.s, n }, 900);
+  return withCookies(redirect(`${GITHUB}/login/oauth/authorize`, { client_id: env.GITHUB_CLIENT_ID, redirect_uri: `${url.origin}/callback`, state }),
+    [clear, `mp_login=${n}; Path=/callback; Max-Age=900; HttpOnly; Secure; SameSite=Lax`]);
 }
 
-const withHeaders = (res, headers) => { for (const [k, v] of Object.entries(headers)) res.headers.set(k, v); return res; };
+const withCookies = (res, cookies) => { for (const c of cookies) res.headers.append('set-cookie', c); return res; };
+const cookieOf = (request, name) => (request.headers.get('cookie') ?? '').match(new RegExp(`(?:^|;\\s*)${name}=([\\w-]+)`))?.[1];
 
 const clientKey = async id => b64u((await sha256(String(id))).subarray(0, 16));
 
@@ -151,16 +156,18 @@ async function githubLogin(token) {
 const sameLogin = (a, b) => String(a ?? '').toLowerCase() === String(b ?? '').toLowerCase();
 
 /** GET /callback: GitHub sends the user back; check who they are and hand a code to the app. */
-export async function callback(url, env) {
+export async function callback(request, env) {
+  const url = new URL(request.url);
   const st = await unseal(env.TOKEN_SECRET, 'state', url.searchParams.get('state'));
   if (!st) return page('Sign-in expired', 'That took too long or the link was altered. Start again from your assistant.');
+  if (cookieOf(request, 'mp_login') !== st.n) return page('Please start again', 'This sign-in wasn’t started in this browser. Start connecting again from your assistant.');
   if (url.searchParams.get('error') || !url.searchParams.get('code')) return redirect(st.r, { error: 'access_denied', state: st.s });
   const gh = await githubToken(env, { code: url.searchParams.get('code'), redirect_uri: `${url.origin}/callback` });
   if (!gh) return page('GitHub sign-in failed', 'GitHub didn’t accept the sign-in. Check GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET, then try again.', 502);
   const login = await githubLogin(gh.a);
   if (!sameLogin(login, env.ALLOWED_LOGIN)) return page('Not allowed', `This connector only works for its owner. You signed in as ${login ?? 'an unknown account'}.`, 403);
   const code = await seal(env.TOKEN_SECRET, 'code', { c: st.c, r: st.r, cc: st.cc, gh, l: login }, 120);
-  return redirect(st.r, { code, state: st.s });
+  return withCookies(redirect(st.r, { code, state: st.s }), ['mp_login=; Path=/callback; Max-Age=0; HttpOnly; Secure; SameSite=Lax']);
 }
 
 async function issue(env, gh, login, c) {
@@ -180,11 +187,12 @@ export async function token(request, env) {
   let form;
   try { form = new URLSearchParams(await request.text()); } catch { return oauthError('invalid_request', 'Unreadable body.'); }
   const grant = form.get('grant_type');
+  if (!form.get('client_id')) return oauthError('invalid_request', 'client_id is required.');
   const c = await clientKey(form.get('client_id'));
   if (grant === 'authorization_code') {
     const code = await unseal(env.TOKEN_SECRET, 'code', form.get('code'));
     if (!code) return oauthError('invalid_grant', 'The code is invalid or expired.');
-    if (form.get('client_id') && code.c !== c) return oauthError('invalid_grant', 'The code was issued to another app.');
+    if (code.c !== c) return oauthError('invalid_grant', 'The code was issued to another app.');
     if (form.get('redirect_uri') && form.get('redirect_uri') !== code.r) return oauthError('invalid_grant', 'redirect_uri doesn’t match.');
     const verifier = form.get('code_verifier') ?? '';
     if (b64u(await sha256(verifier)) !== code.cc) return oauthError('invalid_grant', 'PKCE check failed.');
@@ -192,7 +200,7 @@ export async function token(request, env) {
   }
   if (grant === 'refresh_token') {
     const rt = await unseal(env.TOKEN_SECRET, 'refresh', form.get('refresh_token'));
-    if (!rt || (form.get('client_id') && rt.c !== c)) return oauthError('invalid_grant', 'The refresh token is invalid or expired.');
+    if (!rt || rt.c !== c) return oauthError('invalid_grant', 'The refresh token is invalid or expired.');
     let gh = rt.gh;
     if (gh.r) gh = await githubToken(env, { grant_type: 'refresh_token', refresh_token: gh.r });
     const login = gh && await githubLogin(gh.a);

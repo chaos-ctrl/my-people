@@ -442,12 +442,14 @@ It reuses `src/core` and the app's `GitHub`/`Store` classes, so writes follow th
 
 - **Auth**: an OAuth 2.1 authorization server (RFC 8414 metadata, RFC 9728 protected-resource metadata,
   RFC 7591 dynamic client registration, PKCE S256 required, public clients) with its own consent page
-  (bound to the browser by a cookie, not frameable: registration is open and GitHub skips its prompt for an
+  (bound to the browser by a cookie, as is the GitHub leg that follows, so a flow started elsewhere can't be
+  finished by the owner's browser; not frameable: registration is open and GitHub skips its prompt for an
   app already authorised, so this stops a link from silently granting access to someone else's app) that delegates sign-in to a
   **GitHub App** installed only on `my-people-data` (Contents: read and write). Only `ALLOWED_LOGIN` gets tokens.
   Everything is stateless: client ids, codes (2 min), access tokens (≤ 8 h) and refresh tokens (180 days) are
   AES-GCM-sealed JSON under `TOKEN_SECRET`, each bound to its kind; the GitHub user token (and its refresh
-  token) live only inside them. Codes aren't single-use (stateless), hence the short life and PKCE.
+  token) live only inside them. Codes aren't single-use (stateless), hence the short life and PKCE. `/token` requires `client_id`,
+  and codes and refresh tokens only work for the client they were issued to.
 - **Config**: `GITHUB_CLIENT_ID`, `ALLOWED_LOGIN`, `DATA_REPO` (vars); `GITHUB_CLIENT_SECRET`, `TOKEN_SECRET` (secrets).
 - **Tools**: `list_people`, `get_person`, `briefing`, `log_contact` (several people, one commit, optional Log
   note), `add_note`, `add_ask_about` (optional date → dated follow-up), `add_gift_idea` (status), `add_person`

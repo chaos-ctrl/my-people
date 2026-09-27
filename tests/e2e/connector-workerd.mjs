@@ -34,7 +34,8 @@ async function browser(authUrl) {
   const ok = await fetch(`${base}/authorize`, { method: 'POST', redirect: 'manual', body: new URLSearchParams({ consent, action: 'allow' }),
     headers: { cookie: page.headers.get('set-cookie').split(';')[0], 'sec-fetch-site': 'same-origin', 'content-type': 'application/x-www-form-urlencoded' } });
   const github = new URL(ok.headers.get('location'));
-  const cb = await fetch(`${base}/callback?code=abc&state=${encodeURIComponent(github.searchParams.get('state'))}`, { redirect: 'manual' });
+  const login = ok.headers.getSetCookie().find(c => c.startsWith('mp_login=')).split(';')[0];
+  const cb = await fetch(`${base}/callback?code=abc&state=${encodeURIComponent(github.searchParams.get('state'))}`, { redirect: 'manual', headers: { cookie: login } });
   code = new URL(cb.headers.get('location')).searchParams.get('code');
 }
 const store = {};

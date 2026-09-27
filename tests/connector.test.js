@@ -43,15 +43,17 @@ async function signIn() {
   const gh = new URL(allowed.headers.get('location'));
   assert.equal(gh.origin + gh.pathname, 'https://github.com/login/oauth/authorize');
   assert.equal(gh.searchParams.get('redirect_uri'), `${ORIGIN}/callback`);
-  const cb = await call(`/callback?code=abc&state=${encodeURIComponent(gh.searchParams.get('state'))}`);
-  return { cb, reg, verifier };
+  const loginCookie = allowed.headers.getSetCookie().find(c => c.startsWith('mp_login=')).split(';')[0];
+  const githubUrl = gh.href;
+  const cb = await call(`/callback?code=abc&state=${encodeURIComponent(gh.searchParams.get('state'))}`, { headers: { cookie: loginCookie } });
+  return { cb, reg, verifier, githubUrl };
 }
 
 async function accessToken() {
   const { cb, reg, verifier } = await signIn();
   const back = new URL(cb.headers.get('location'));
   const t = await (await call('/token', form({ grant_type: 'authorization_code', code: back.searchParams.get('code'), code_verifier: verifier, client_id: reg.client_id, redirect_uri: CLIENT_CB }))).json();
-  return t;
+  return { ...t, client_id: reg.client_id };
 }
 
 let rpcId = 0;
@@ -91,6 +93,18 @@ test('refuses bad clients, redirect URIs and missing PKCE', async () => {
   assert.match(noPkce.headers.get('location'), /error=invalid_request/);
 });
 
+test('a sign-in started in another browser is refused at the callback', async () => {
+  // The attacker confirms in their own browser, keeps the GitHub link, and gets the owner to open it:
+  // GitHub (already authorised) sends the owner straight back, but without the attacker's cookie.
+  const { githubUrl } = await signIn();
+  const state = new URL(githubUrl).searchParams.get('state');
+  const r = await call(`/callback?code=owner&state=${encodeURIComponent(state)}`);
+  assert.equal(r.status, 400);
+  assert.equal(r.headers.get('location'), null);
+  const wrong = await call(`/callback?code=owner&state=${encodeURIComponent(state)}`, { headers: { cookie: 'mp_login=someoneelse' } });
+  assert.equal(wrong.status, 400);
+});
+
 test('only the allowed GitHub account gets in', async () => {
   gh.login = 'someone-else';
   const { cb } = await signIn();
@@ -105,7 +119,11 @@ test('wrong PKCE verifier is refused; refresh works', async () => {
   assert.equal(bad.status, 400);
   const t = await accessToken();
   assert.ok(t.access_token && t.refresh_token && t.expires_in > 0);
-  const r = await (await call('/token', form({ grant_type: 'refresh_token', refresh_token: t.refresh_token }))).json();
+  const { reg: other } = await signIn();
+  const stolen = await call('/token', form({ grant_type: 'refresh_token', refresh_token: t.refresh_token, client_id: other.client_id }));
+  assert.equal(stolen.status, 400); // bound to the app it was issued to
+  assert.equal((await call('/token', form({ grant_type: 'refresh_token', refresh_token: t.refresh_token }))).status, 400); // client_id required
+  const r = await (await call('/token', form({ grant_type: 'refresh_token', refresh_token: t.refresh_token, client_id: t.client_id }))).json();
   assert.ok(r.access_token);
 });
 
