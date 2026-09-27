@@ -74,11 +74,10 @@ Keep it short: decisions and status, not a diary.
       offline + queued quick logs).
 - [x] Nice to have: Lighthouse run (`tests/e2e/lighthouse.mjs`: 100 accessibility / 100 best practices on home,
       weekly, insights, settings; fixed label-in-name on person cards); month names (EN/FR) in follow-ups.
-- [ ] Per-person "places" filter: **needs the user's input** — unclear whether this means extra cities per
-      person (e.g. `places: [Lyon, Annecy]` used by trips and the city filter) or something else.
+- [x] ~~Per-person "places" filter~~: dropped by the user (Sept 2026).
 
 ## User to-do (remind them)
-1. Merge `claude/jolly-bohr-o92ate` (contains all work so far) into `main` (a PR can be opened for them on request).
+1. Merge `claude/jolly-bohr-o92ate` (contains all work so far) into `main`: docs/SETUP.md, "Merging new work".
 2. Follow docs/SETUP.md steps 1–9 (Pages, `stable` branch, data repo + template files, token, app, ntfy,
    secrets, calendar address, home screen, test).
 3. Optional: set up the AI connector (docs/SETUP.md step 10: Cloudflare + GitHub App, ~20 min).

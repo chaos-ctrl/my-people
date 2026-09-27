@@ -12,8 +12,12 @@ This guide takes you from nothing to a working app on your phone, one click at a
 - **Birthdays from Google Calendar**, copied into your people once a day (read-only; nothing is ever written to Google).
 - Optionally, **your AI assistant** (Claude, ChatGPT…) connected to your people (step 10).
 
-> **Before you start:** the app's code must be on the `main` branch of `chaos-ctrl/my-people`. If it is
-> still in a pull request, open the pull request on GitHub and click **Merge pull request**, then **Confirm merge**.
+> **Before you start:** the app's newest code must be on the `main` branch of `chaos-ctrl/my-people`. If it is
+> still on a `claude/…` branch, merge it first (see [Merging new work](#merging-new-work) at the end).
+>
+> Tip: the links below go straight to the right GitHub page. GitHub has two different "Settings": the
+> **repository's** (a tab on the repository page) and **your account's** (under your profile picture). The
+> guide says which one each time.
 
 ---
 
@@ -21,12 +25,11 @@ This guide takes you from nothing to a working app on your phone, one click at a
 
 ### 1a. Turn on GitHub Pages
 
-1. Go to <https://github.com/chaos-ctrl/my-people>.
-2. Click **Settings** (the gear tab at the top of the repository, not your account settings).
-3. In the left sidebar, under **Code and automation**, click **Pages**.
-4. Under **Build and deployment**, set **Source** to **Deploy from a branch**.
-5. Under **Branch**, choose **main** and **/ (root)**, then click **Save**.
-6. Wait one or two minutes, then refresh the page. A box at the top says
+1. Open <https://github.com/chaos-ctrl/my-people/settings/pages> (the repository's Pages settings).
+   *If you only see "Add a domain", you're in your account's settings instead: use the link above.*
+2. Under **Build and deployment**, set **Source** to **Deploy from a branch**.
+3. Under **Branch**, choose **main** and **/ (root)**, then click **Save**.
+4. Wait one or two minutes, then refresh the page. A box at the top says
    **Your site is live at https://chaos-ctrl.github.io/my-people/**.
 
 ### 1b. Create the "stable" bookmark
@@ -45,10 +48,10 @@ version, a branch called `stable`, so a mistake in new code can't touch your sec
 
 ## 2. Create your private data repository
 
-1. Click the **+** at the top right of any GitHub page, then **New repository**.
+1. Open <https://github.com/new> (or click the **+** at the top right of any GitHub page → **New repository**).
 2. **Owner**: `chaos-ctrl`. **Repository name**: `my-people-data`.
 3. Choose **Private**. This matters: your notes about people go here.
-4. Tick **Add a README file** (so the repository isn't empty).
+4. Turn on **Add README** (it may be a switch or a tick box **Add a README file**) so the repository isn't empty.
 5. Click **Create repository**.
 
 Now copy five files into it from the `data-repo-template` folder of `my-people`. For each file in the table:
@@ -84,23 +87,22 @@ and a `.github` folder. The `people` folder appears by itself when you add your 
 The app talks to GitHub with a *fine-grained personal access token*: a password that only works on
 `my-people-data` and only for what the app needs.
 
-1. Click your profile picture (top right of GitHub) → **Settings**.
-2. At the very bottom of the left sidebar, click **Developer settings**.
-3. Click **Personal access tokens** → **Fine-grained tokens**.
-4. Click **Generate new token**. GitHub may ask for your password or a code.
-5. **Token name**: `My people`. **Description**: `Phone app` (anything helps you recognise it).
-6. **Resource owner**: `chaos-ctrl`.
-7. **Expiration**: choose **90 days** (recommended). Note the date shown; the app asks for it.
-8. **Repository access**: choose **Only select repositories**, then pick **chaos-ctrl/my-people-data**.
+1. Open <https://github.com/settings/personal-access-tokens/new>. GitHub may ask for your password or a code.
+   (The long way: profile picture → **Settings** (your account's) → at the bottom of the left sidebar
+   **Developer settings** → **Personal access tokens** → **Fine-grained tokens** → **Generate new token**.)
+2. **Token name**: `My people`. **Description**: `Phone app` (anything helps you recognise it).
+3. **Resource owner**: `chaos-ctrl`.
+4. **Expiration**: choose **90 days** (recommended). Note the date shown; the app asks for it.
+5. **Repository access**: choose **Only select repositories**, then pick **chaos-ctrl/my-people-data**.
    Don't choose "All repositories".
-9. Under **Permissions** → **Repository permissions** (click **Add permissions** if you only see a button):
+6. Under **Permissions** → **Repository permissions** (click **Add permissions** if you only see a button):
    - **Contents**: **Read and write**.
    - **Actions**: **Read and write**. This is only for the app's "Send a test notification" button;
      skip it if you don't want that button.
    - **Metadata** is added automatically as read-only. Leave everything else at **No access**.
-10. Click **Generate token** (and confirm).
-11. The token starts with `github_pat_`. Click the copy icon next to it. **GitHub shows it only once.**
-    Keep this tab open until you've pasted it into the app.
+7. Click **Generate token** (and confirm).
+8. The token starts with `github_pat_`. Click the copy icon next to it. **GitHub shows it only once.**
+   Keep this tab open until you’ve pasted it into the app.
 
 Do this once per device if you like (a token for the phone, another for the computer). That way you can
 revoke one without affecting the other.
@@ -153,12 +155,13 @@ the messages*, so the name must be long and random, like a password.
 
 Secrets are values the robots can use but nobody can read back, not even you.
 
-1. Go to <https://github.com/chaos-ctrl/my-people-data>.
-2. Click **Settings** → in the left sidebar **Secrets and variables** → **Actions**.
-3. Click **New repository secret**. **Name**: `NTFY_TOPIC`. **Secret**: paste your topic. Click **Add secret**.
-4. *(Optional)* To also get the reminder by email, add `NTFY_EMAIL` with your email address, and tick
+1. Open <https://github.com/chaos-ctrl/my-people-data/settings/secrets/actions/new>.
+   (The long way: the repository's **Settings** tab → left sidebar **Secrets and variables** → **Actions** →
+   **New repository secret**.)
+2. **Name**: `NTFY_TOPIC`. **Secret**: paste your topic. Click **Add secret**.
+3. *(Optional)* To also get the reminder by email, add `NTFY_EMAIL` with your email address, and tick
    **Email (via ntfy)** in the app's Settings → Reminders.
-5. You'll add `CALENDAR_ICS_URL` in the next step.
+4. You'll add `CALENDAR_ICS_URL` in the next step.
 
 Advanced, optional: `NTFY_SERVER` if you run your own ntfy server (default `https://ntfy.sh`),
 and `NTFY_TOKEN` if that server requires an access token.
@@ -225,7 +228,7 @@ the red message. It usually names the missing secret.
 
 **First calendar sync**
 
-1. In `my-people-data`, click the **Actions** tab.
+1. Open <https://github.com/chaos-ctrl/my-people-data/actions>.
 2. In the left list, click **Calendar sync**.
 3. Click **Run workflow** (on the right) → **Run workflow**.
 4. After about 30 seconds, refresh. A green tick means it worked. Open the run to see the summary, e.g.
@@ -319,6 +322,19 @@ The app warns you 14 days before the token expires.
 
 If you lose your phone: delete its token on GitHub straight away. Nothing else is needed. The phone doesn't hold
 your people's data, only the (encrypted) token.
+
+## Merging new work
+
+When an AI assistant has built something new, it's on a branch named like `claude/…`. To make it the app:
+
+1. Open <https://github.com/chaos-ctrl/my-people/pulls>. If there's a pull request for that branch, click it and
+   go to step 3.
+2. Otherwise open <https://github.com/chaos-ctrl/my-people/compare>, choose **compare:** `claude/…` (the branch
+   name you were given), then click **Create pull request**, and **Create pull request** again.
+3. Wait for the checks at the bottom to turn green (a few minutes), then click **Merge pull request** →
+   **Confirm merge**.
+
+The app updates by itself a minute later. The robots update when you move `stable` (next section).
 
 ## Updating the app
 
