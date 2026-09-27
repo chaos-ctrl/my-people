@@ -441,7 +441,9 @@ deployed as a Cloudflare Worker (`wrangler.toml`; standard web APIs only, so it 
 It reuses `src/core` and the app's `GitHub`/`Store` classes, so writes follow the file format and conflict rules.
 
 - **Auth**: an OAuth 2.1 authorization server (RFC 8414 metadata, RFC 9728 protected-resource metadata,
-  RFC 7591 dynamic client registration, PKCE S256 required, public clients) that delegates sign-in to a
+  RFC 7591 dynamic client registration, PKCE S256 required, public clients) with its own consent page
+  (bound to the browser by a cookie, not frameable: registration is open and GitHub skips its prompt for an
+  app already authorised, so this stops a link from silently granting access to someone else's app) that delegates sign-in to a
   **GitHub App** installed only on `my-people-data` (Contents: read and write). Only `ALLOWED_LOGIN` gets tokens.
   Everything is stateless: client ids, codes (2 min), access tokens (≤ 8 h) and refresh tokens (180 days) are
   AES-GCM-sealed JSON under `TOKEN_SECRET`, each bound to its kind; the GitHub user token (and its refresh

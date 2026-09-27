@@ -65,7 +65,8 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const req = event.request;
   const url = new URL(req.url);
-  if (req.method === 'POST' && url.origin === self.location.origin && url.pathname.endsWith('/share-target')) {
+  if (req.method === 'POST' && url.origin === self.location.origin && url.pathname.endsWith('/share-target')
+    && req.headers.get('sec-fetch-site') !== 'cross-site') { // shares come from the phone, not from other websites
     event.respondWith(receiveShare(req));
     return;
   }

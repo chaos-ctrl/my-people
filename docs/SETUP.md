@@ -298,7 +298,9 @@ add, never delete. About 20 minutes.
 
 - **Claude** (<https://claude.ai>, then it also works in the phone app): **Settings** → **Connectors** →
   **Add custom connector**. Name: `My people`. URL: YOUR-ADDRESS followed by `/mcp`. Click **Add**, then
-  **Connect**: GitHub asks you to authorise your app → **Authorize**. In a chat, try "who should I call this week?".
+  **Connect**: a page asks you to confirm → **Continue with GitHub**; the first time, GitHub asks you to
+  authorise your app → **Authorize**. If that confirmation page ever appears when you didn't just connect an
+  assistant, click **Cancel**. In a chat, try "who should I call this week?".
 - **Other assistants** that support remote MCP connectors with sign-in (e.g. ChatGPT in developer mode): add a
   connector with the same `/mcp` address.
 

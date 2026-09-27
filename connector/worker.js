@@ -2,7 +2,7 @@
 // your people from any device. Runs on Cloudflare Workers (standard web APIs only, so it also runs on
 // Deno or Node). Setup: docs/SETUP.md, "Connect an AI assistant".
 
-import { authServerMetadata, resourceMetadata, register, authorize, callback, token, bearer, config, json, page, CORS } from './oauth.js';
+import { authServerMetadata, resourceMetadata, register, authorize, confirm, callback, token, bearer, config, json, page, CORS } from './oauth.js';
 import { handleMcp } from './mcp.js';
 
 export async function handle(request, env) {
@@ -18,6 +18,7 @@ export async function handle(request, env) {
   if (path.startsWith('/.well-known/oauth-protected-resource')) return json(resourceMetadata(origin));
   if (path === '/register' && request.method === 'POST') return register(request, env);
   if (path === '/authorize' && request.method === 'GET') return authorize(url, env);
+  if (path === '/authorize' && request.method === 'POST') return confirm(request, env);
   if (path === '/callback' && request.method === 'GET') return callback(url, env);
   if (path === '/token' && request.method === 'POST') return token(request, env);
   if (path === '/mcp' || path === '/sse') {

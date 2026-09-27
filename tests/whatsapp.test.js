@@ -71,6 +71,8 @@ test('reads stored and deflated ZIP entries', async () => {
   assert.equal(new TextDecoder().decode(await zipRead(zip, entries[0])), 'xx');
   assert.equal(new TextDecoder().decode(await zipRead(zip, entries[1])), android);
   assert.throws(() => zipEntries(new Uint8Array(40)), /damaged/);
+  await assert.rejects(zipRead(zip, entries[1], 100), /too big/);
+  await assert.rejects(zipRead(zip, { ...entries[1], usize: 10 }, 100), /too big/); // size lied about
 });
 
 import { fromPickedContacts } from '../src/core/phone-contacts.js';

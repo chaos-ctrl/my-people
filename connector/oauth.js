@@ -19,10 +19,13 @@ const redirect = (url, params) => {
   return new Response(null, { status: 302, headers: { location: u.href, 'cache-control': 'no-store' } });
 };
 const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-export const page = (title, message, status = 400) => new Response(
-  `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml(title)}</title>` +
-  `<body style="font:16px/1.5 system-ui;max-width:32rem;margin:3rem auto;padding:0 1rem"><h1 style="font-size:1.3rem">${escapeHtml(title)}</h1><p>${escapeHtml(message)}</p>`,
-  { status, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'" } });
+const PAGE_HEADERS = {
+  'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-frame-options': 'DENY', 'referrer-policy': 'no-referrer',
+  'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'",
+};
+const shell = (title, body) => `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml(title)}</title>` +
+  `<body style="font:16px/1.5 system-ui;max-width:32rem;margin:3rem auto;padding:0 1rem;color-scheme:light dark"><h1 style="font-size:1.3rem">${escapeHtml(title)}</h1>${body}`;
+export const page = (title, message, status = 400) => new Response(shell(title, `<p>${escapeHtml(message)}</p>`), { status, headers: PAGE_HEADERS });
 
 export function config(env) {
   const missing = ['GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'TOKEN_SECRET', 'ALLOWED_LOGIN', 'DATA_REPO'].filter(k => !env[k]);
@@ -76,7 +79,12 @@ export async function register(request, env) {
   }, 201);
 }
 
-/** GET /authorize: check the client and PKCE, then send the user to GitHub to sign in. */
+/**
+ * GET /authorize: check the client and PKCE, then ask the user to confirm on our own page. Anyone can
+ * register a client, and GitHub skips its prompt for an app already authorised, so without this step a
+ * link could silently hand a code to someone else's app. The confirmation is bound to this browser by a
+ * cookie, so it can't be submitted from another site.
+ */
 export async function authorize(url, env) {
   const q = url.searchParams;
   const client = await unseal(env.TOKEN_SECRET, 'client', q.get('client_id'));
@@ -87,9 +95,38 @@ export async function authorize(url, env) {
   if (q.get('response_type') !== 'code') return back({ error: 'unsupported_response_type' });
   const challenge = q.get('code_challenge');
   if (!challenge || (q.get('code_challenge_method') ?? 'plain') !== 'S256') return back({ error: 'invalid_request', error_description: 'PKCE with S256 is required.' });
-  const state = await seal(env.TOKEN_SECRET, 'state', { c: await clientKey(q.get('client_id')), r: redirectUri, cc: challenge, s: q.get('state') ?? '' }, 900);
-  return redirect(`${GITHUB}/login/oauth/authorize`, { client_id: env.GITHUB_CLIENT_ID, redirect_uri: `${url.origin}/callback`, state });
+  const nonce = b64u(crypto.getRandomValues(new Uint8Array(16)));
+  const consent = await seal(env.TOKEN_SECRET, 'consent', { c: await clientKey(q.get('client_id')), r: redirectUri, cc: challenge, s: q.get('state') ?? '', n: nonce }, 900);
+  const name = client.n || 'An app';
+  const host = new URL(redirectUri).host || redirectUri;
+  const body = `<p><strong>${escapeHtml(name)}</strong> wants to read and update your people (it can’t delete anything).</p>` +
+    `<p>After you sign in, you’ll be sent back to <strong>${escapeHtml(host)}</strong>. Only continue if you just asked your assistant to connect, and that address is your assistant’s.</p>` +
+    `<form method="post" action="/authorize"><input type="hidden" name="consent" value="${escapeHtml(consent)}">` +
+    `<p style="display:flex;gap:.75rem;flex-wrap:wrap"><button name="action" value="allow" style="font:inherit;padding:.6rem 1.1rem">Continue with GitHub</button>` +
+    `<button name="action" value="deny" style="font:inherit;padding:.6rem 1.1rem">Cancel</button></p></form>`;
+  return new Response(shell('Connect to My people?', body), {
+    status: 200,
+    headers: { ...PAGE_HEADERS, 'set-cookie': `mp_consent=${nonce}; Path=/authorize; Max-Age=900; HttpOnly; Secure; SameSite=Lax` },
+  });
 }
+
+/** POST /authorize: the user confirmed (or cancelled) on our page; on to GitHub. */
+export async function confirm(request, env) {
+  const url = new URL(request.url);
+  const form = new URLSearchParams(await request.text().catch(() => ''));
+  const c = await unseal(env.TOKEN_SECRET, 'consent', form.get('consent'));
+  const cookie = (request.headers.get('cookie') ?? '').match(/(?:^|;\s*)mp_consent=([\w-]+)/)?.[1];
+  const site = request.headers.get('sec-fetch-site');
+  if (!c || !cookie || cookie !== c.n || (site && site !== 'same-origin')) {
+    return page('Please start again', 'This confirmation expired or didn’t come from this page. Start connecting again from your assistant.');
+  }
+  const clear = { 'set-cookie': 'mp_consent=; Path=/authorize; Max-Age=0; HttpOnly; Secure; SameSite=Lax' };
+  if (form.get('action') !== 'allow') return withHeaders(redirect(c.r, { error: 'access_denied', state: c.s }), clear);
+  const state = await seal(env.TOKEN_SECRET, 'state', { c: c.c, r: c.r, cc: c.cc, s: c.s }, 900);
+  return withHeaders(redirect(`${GITHUB}/login/oauth/authorize`, { client_id: env.GITHUB_CLIENT_ID, redirect_uri: `${url.origin}/callback`, state }), clear);
+}
+
+const withHeaders = (res, headers) => { for (const [k, v] of Object.entries(headers)) res.headers.set(k, v); return res; };
 
 const clientKey = async id => b64u((await sha256(String(id))).subarray(0, 16));
 

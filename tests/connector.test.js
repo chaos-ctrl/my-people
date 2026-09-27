@@ -72,8 +72,23 @@ async function signIn() {
   const verifier = 'v'.repeat(50);
   const challenge = b64u(new Uint8Array(createHash('sha256').update(verifier).digest()));
   const a = await call(`/authorize?${new URLSearchParams({ response_type: 'code', client_id: reg.client_id, redirect_uri: CLIENT_CB, code_challenge: challenge, code_challenge_method: 'S256', state: 'xyz' })}`);
-  assert.equal(a.status, 302);
-  const gh = new URL(a.headers.get('location'));
+  assert.equal(a.status, 200);
+  assert.match(a.headers.get('content-security-policy'), /frame-ancestors 'none'/);
+  const html = await a.text();
+  assert.match(html, /<strong>Claude<\/strong> wants to read and update your people/);
+  assert.match(html, /sent back to <strong>claude\.ai<\/strong>/);
+  const consent = html.match(/name="consent" value="([^"]+)"/)[1];
+  const cookie = a.headers.get('set-cookie').split(';')[0];
+  const post = (params, headers = {}) => call('/authorize', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded', ...headers }, body: new URLSearchParams(params).toString() });
+  // Without the cookie (e.g. a form on another site), or from another site: refused.
+  assert.equal((await post({ consent, action: 'allow' })).status, 400);
+  assert.equal((await post({ consent, action: 'allow' }, { cookie, 'sec-fetch-site': 'cross-site' })).status, 400);
+  assert.equal((await post({ consent, action: 'allow' }, { cookie: 'mp_consent=someoneelse' })).status, 400);
+  const denied = await post({ consent, action: 'deny' }, { cookie });
+  assert.match(denied.headers.get('location'), /^https:\/\/claude\.ai\/api\/mcp\/auth_callback\?error=access_denied&state=xyz$/);
+  const allowed = await post({ consent, action: 'allow' }, { cookie, 'sec-fetch-site': 'same-origin' });
+  assert.equal(allowed.status, 302);
+  const gh = new URL(allowed.headers.get('location'));
   assert.equal(gh.origin + gh.pathname, 'https://github.com/login/oauth/authorize');
   assert.equal(gh.searchParams.get('redirect_uri'), `${ORIGIN}/callback`);
   const cb = await call(`/callback?code=abc&state=${encodeURIComponent(gh.searchParams.get('state'))}`);
