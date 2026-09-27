@@ -5,15 +5,17 @@ import { parseYaml, patchYaml, dumpYaml } from './yaml-edit.js';
 import { isPlainObject } from './text.js';
 
 export const KEY_ORDER = [
-  'name', 'aliases', 'group', 'frequency_days', 'birthday', 'birthday_source',
-  'partner', 'anniversary', 'children', 'contacts',
+  'name', 'aliases', 'group', 'city', 'frequency_days', 'birthday', 'birthday_source',
+  'whatsapp', 'email', 'phone', 'links', 'partner', 'anniversary', 'children', 'snoozed_until', 'contacts',
 ];
 
 export const SECTIONS = [
   { key: 'ask', title: 'Ask about' },
   { key: 'gifts', title: 'Gift ideas' },
   { key: 'notes', title: 'Notes' },
+  { key: 'log', title: 'Log' },
 ];
+const INITIAL_SECTIONS = SECTIONS.filter(s => s.key !== 'log');
 const SECTION_BY_TITLE = new Map(SECTIONS.map(s => [s.title.toLowerCase(), s.key]));
 
 /**
@@ -141,7 +143,7 @@ export function newPersonFile(data, sections = {}) {
   const ordered = {};
   for (const k of KEY_ORDER) if (data[k] !== undefined) ordered[k] = data[k];
   for (const k of Object.keys(data)) if (!(k in ordered) && data[k] !== undefined) ordered[k] = data[k];
-  const body = SECTIONS.map(s => {
+  const body = INITIAL_SECTIONS.map(s => {
     const v = String(sections[s.key] ?? '').trim();
     return `## ${s.title}\n` + (v ? v + '\n' : '');
   }).join('\n');

@@ -2,7 +2,7 @@
 // It never touches GitHub API requests, so your people are never cached.
 // Bump VERSION when the list of files changes.
 
-const VERSION = 'my-people-v1';
+const VERSION = 'my-people-v2';
 const SHELL = [
   './',
   'index.html',
@@ -23,6 +23,11 @@ const SHELL = [
   'src/app/views/picker.js',
   'src/app/views/settings.js',
   'src/app/views/sheet.js',
+  'src/app/views/charts.js',
+  'src/app/views/weekly.js',
+  'src/app/views/insights.js',
+  'src/app/views/imports.js',
+  'src/app/actions.js',
   'src/core/dates.js',
   'src/core/model.js',
   'src/core/person-file.js',
@@ -30,6 +35,13 @@ const SHELL = [
   'src/core/settings.js',
   'src/core/text.js',
   'src/core/yaml-edit.js',
+  'src/core/followups.js',
+  'src/core/gifts.js',
+  'src/core/logbook.js',
+  'src/core/contact-links.js',
+  'src/core/rhythm.js',
+  'src/core/trips.js',
+  'src/core/insights.js',
   'src/vendor/yaml.js',
 ];
 

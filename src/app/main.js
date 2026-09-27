@@ -10,6 +10,10 @@ import { createSheet } from './views/sheet.js';
 import { createSettings } from './views/settings.js';
 import { createReviewActions } from './views/picker.js';
 import { createAuth } from './views/auth.js';
+import { createWeekly } from './views/weekly.js';
+import { createInsights } from './views/insights.js';
+import { createImports } from './views/imports.js';
+import { createActions } from './actions.js';
 
 const SETUP_GUIDE = 'https://github.com/chaos-ctrl/my-people/blob/main/docs/SETUP.md';
 
@@ -45,6 +49,8 @@ const ctx = {
   showBroken,
   changeStorage: () => auth.showSetup({ changing: true }),
   refreshSettings: () => settings.render(),
+  get actions() { return actions; },
+  go: hash => { if (location.hash === hash) route(); else location.hash = hash; },
 };
 
 const home = createHome(ctx);
@@ -52,27 +58,44 @@ const sheet = createSheet(ctx);
 const settings = createSettings(ctx);
 const review = createReviewActions(ctx);
 const auth = createAuth(ctx);
+const actions = createActions(ctx);
+const weekly = createWeekly(ctx);
+const insights = createInsights(ctx);
+const imports = createImports(ctx);
 
 // ---------------- views ----------------
+
+const TITLES = { settings: 'Settings', weekly: 'Weekly review', insights: 'Insights' };
 
 function show(name) {
   app.view = name;
   for (const v of $$('.view')) v.hidden = v.id !== `view-${name}`;
-  document.title = name === 'settings' ? 'Settings · My people' : 'My people';
-  if (name === 'settings' && location.hash !== '#settings') history.pushState(null, '', '#settings');
-  if (name !== 'settings' && location.hash === '#settings') history.replaceState(null, '', location.pathname + location.search);
+  document.title = TITLES[name] ? `${TITLES[name]} · My people` : 'My people';
   window.scrollTo(0, 0);
 }
 
+const clearHash = () => history.replaceState(null, '', location.pathname + location.search);
+
+/** #settings, #weekly, #insights, #person/<slug> (e.g. from a reminder), #import (shared files); else home. */
 function route() {
-  if (!app.store) return;
-  if (location.hash === '#settings') { settings.render(); show('settings'); }
-  else { show('home'); home.render(); }
+  if (!app.store) return; // locked: the hash is kept and used after unlocking
+  const hash = decodeURIComponent(location.hash.replace(/^#/, ''));
+  if (hash === 'settings') { settings.render(); show('settings'); return; }
+  if (hash === 'weekly') { weekly.start(); show('weekly'); return; }
+  if (hash === 'insights') { insights.render(); show('insights'); return; }
+  show('home');
+  home.render();
+  if (hash.startsWith('person/')) {
+    clearHash();
+    const slug = hash.slice(7);
+    if (app.store.person(slug)) sheet.open(slug);
+  } else if (hash === 'import') {
+    clearHash();
+    imports.handleShared();
+  }
 }
 
-window.addEventListener('popstate', route);
-$('#go-settings').addEventListener('click', () => { settings.render(); show('settings'); });
-$('#settings-back').addEventListener('click', () => { if (location.hash === '#settings') history.back(); else route(); });
+window.addEventListener('hashchange', route);
 $('#lock-now').addEventListener('click', () => lock());
 $('#info-close').addEventListener('click', () => $('#info').close());
 
@@ -82,7 +105,12 @@ async function unlocked(token, gh = null) {
   app.token = token;
   app.gh = gh ?? new GitHub(token, app.device.repo);
   app.store = new Store(app.gh);
-  app.store.addEventListener('change', () => { if (app.view === 'home') home.render(); renderBanners(); });
+  app.store.addEventListener('change', () => {
+    if (app.view === 'home') home.render();
+    else if (app.view === 'weekly') weekly.render();
+    else if (app.view === 'insights') insights.render();
+    renderBanners();
+  });
   $('#summary').textContent = 'Loading…';
   fill($('#reach')); fill($('#coming')); fill($('#list'));
   show('home');
@@ -110,7 +138,7 @@ function wipe() {
   app.gh = null;
   app.token = null;
   app.notices = [];
-  for (const id of ['#reach', '#coming', '#review', '#list', '#groups', '#banners', '#settings-form', '#device-settings', '#sheet-body', '#picker-body', '#info-body']) fill($(id));
+  for (const id of ['#reach', '#followups', '#coming', '#review', '#list', '#groups', '#cities', '#banners', '#settings-form', '#device-settings', '#sheet-body', '#picker-body', '#info-body', '#modal-body', '#weekly', '#insights']) fill($(id));
   $('#missing').textContent = '';
   $('#summary').textContent = '';
   $('#search').value = '';
@@ -128,7 +156,7 @@ function forget() {
   wipe();
   forgetDevice();
   app.device = null;
-  if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+  if (location.hash) clearHash();
   auth.showSetup();
 }
 

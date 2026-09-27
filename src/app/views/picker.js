@@ -3,6 +3,7 @@
 import { $, h, fill, openDialog, toast } from '../dom.js';
 import { parsePersonFile, serialisePersonFile, withData } from '../../core/person-file.js';
 import { resolveReviewItem } from '../../core/review.js';
+import { REVIEW_TEMPLATE } from '../../core/settings.js';
 import { normalise, isPlainObject } from '../../core/text.js';
 import { parseYearly } from '../../core/dates.js';
 
@@ -114,8 +115,10 @@ export function createReviewActions(ctx) {
     const btn = $('#picker-ok');
     btn.disabled = true;
     try {
-      await ctx.store.updatePerson(slug, t => attachToText(t, target, date, name), `Update ${p.name} from the calendar`);
-      await resolve(item, `Attach calendar event to ${p.name}`);
+      await ctx.store.updateFiles([
+        { path: p.path, mutate: t => attachToText(t, target, date, name) },
+        { path: 'calendar-review.yml', mutate: t => resolveReviewItem(t, String(item.uid)), template: REVIEW_TEMPLATE },
+      ], `Attach calendar event to ${p.name}`);
       dialog.close();
       toast(`Saved to ${p.name}.`);
     } catch (e) {

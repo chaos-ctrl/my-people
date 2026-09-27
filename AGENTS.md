@@ -1,7 +1,7 @@
 # Instructions for AI assistants
 
 This file tells any AI assistant (Claude, ChatGPT, Codex, Gemini, …) how to work on this project.
-Read `SPEC.md` for the full design. Follow it; if something in the spec seems wrong, ask the user
+Read `SPEC.md` for the full design, and `docs/ROADMAP.md` for decisions, status and what to build next. Follow it; if something in the spec seems wrong, ask the user
 rather than silently deviating.
 
 ## The two repositories

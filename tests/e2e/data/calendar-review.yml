@@ -1,0 +1,9 @@
+pending:
+  - uid: "abc123@google.com"
+    summary: "Tante Mimi 🎂"
+    date: 04-18
+    kind: birthday
+    guessed_name: Tante Mimi
+    candidates: []
+    first_seen: 2026-09-20
+dismissed: []

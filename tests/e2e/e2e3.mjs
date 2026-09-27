@@ -1,0 +1,35 @@
+import { mockGitHub } from './mockgh.mjs';
+// Run with: TOOLS=<dir with node_modules/playwright-core and axe-core> node tests/e2e/<file> (app served on :8123)
+const TOOLS = process.env.TOOLS;
+const { chromium } = await import(`${TOOLS}/node_modules/playwright-core/index.mjs`);
+const DATA = new URL('./data', import.meta.url).pathname;
+const SHOTS = (process.env.SHOTS || '/tmp') + '/';
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const ctx = await browser.newContext();
+const page = await ctx.newPage();
+const errors = []; page.on('pageerror', e => errors.push(e.message));
+const cdp = await ctx.newCDPSession(page);
+await cdp.send('WebAuthn.enable');
+await cdp.send('WebAuthn.addVirtualAuthenticator', { options: { protocol: 'ctap2', ctap2Version: 'ctap2_1', transport: 'internal', hasResidentKey: true, hasUserVerification: true, isUserVerified: true, hasPrf: true, automaticPresenceSimulation: true } });
+mockGitHub(page, { dir: DATA });
+// WebAuthn needs a secure context: localhost counts.
+await page.goto('http://localhost:8123/index.html');
+await page.fill('#setup-repo', 'o/data'); await page.fill('#setup-token', 'github_pat_test');
+await page.click('#setup-next'); await page.waitForSelector('#setup-step-storage:not([hidden])');
+await page.check('#setup-modes input[value="passkey"]');
+await page.fill('#setup-pin', '246810'); await page.fill('#setup-pin2', '246810');
+await page.click('#setup-next');
+await page.waitForFunction(() => document.querySelector('#summary')?.textContent.includes('people'), null, { timeout: 15000 });
+const d = JSON.parse(await page.evaluate(() => localStorage.getItem('mp.device')));
+console.log('mode:', d.mode, 'has passkey box:', !!d.passkey, 'has PIN box:', !!d.pinBox, 'notices:', await page.textContent('#banners'));
+await page.reload();
+await page.waitForSelector('#lock-passkey:not([hidden])');
+await page.click('#lock-passkey');
+await page.waitForSelector('#view-home:not([hidden])', { timeout: 15000 });
+console.log('unlocked with passkey ✓');
+await page.click('#lock-now');
+await page.click('#lock-use-pin'); await page.fill('#lock-pin', '246810'); await page.click('#lock-submit');
+await page.waitForSelector('#view-home:not([hidden])');
+console.log('unlocked with backup PIN ✓');
+console.log('errors:', errors);
+await browser.close();
