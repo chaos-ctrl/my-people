@@ -78,7 +78,7 @@ Keep it short: decisions and status, not a diary.
       person (e.g. `places: [Lyon, Annecy]` used by trips and the city filter) or something else.
 
 ## User to-do (remind them)
-1. Merge `claude/eloquent-davinci-hks9r0` into `main` (a PR can be opened for them on request).
+1. Merge `claude/jolly-bohr-o92ate` (contains all work so far) into `main` (a PR can be opened for them on request).
 2. Follow docs/SETUP.md steps 1–9 (Pages, `stable` branch, data repo + template files, token, app, ntfy,
    secrets, calendar address, home screen, test).
 3. Optional: set up the AI connector (docs/SETUP.md step 10: Cloudflare + GitHub App, ~20 min).
