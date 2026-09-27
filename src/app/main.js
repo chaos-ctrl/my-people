@@ -50,6 +50,7 @@ const ctx = {
   changeStorage: () => auth.showSetup({ changing: true }),
   refreshSettings: () => settings.render(),
   get actions() { return actions; },
+  get imports() { return imports; },
   go: hash => { if (location.hash === hash) route(); else location.hash = hash; },
 };
 

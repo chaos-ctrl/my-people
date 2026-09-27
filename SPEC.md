@@ -252,6 +252,14 @@ one type, date and optional note, one commit). After logging, the toast offers *
 **Weekly review** (`#weekly`): one card at a time — follow-ups, birthdays and anniversaries this week,
 then up to five people to reach out to — each with contact buttons, log buttons, *Not now* and *Skip*.
 
+**WhatsApp import**: the manifest declares a `share_target` (POST, multipart), so on Android a chat export
+(WhatsApp → Export chat → My people; `.txt` or `.zip`) goes to the service worker, which keeps the file in
+a cache (`my-people-share`) and redirects to `#import`. The app (after unlocking) reads and deletes it, unzips
+with `DecompressionStream('deflate-raw')` when needed, and reads only message dates and sender names
+(Android and iPhone formats, day- or month-first). It guesses the person from the chat name or a sender and
+offers to log the last message day or every day not yet logged, as `message` contacts, in one commit.
+*Settings → Import → WhatsApp chat…* does the same from a picked file on other devices.
+
 **Insights** (`#insights`): contacts per month over 12 months, people drifting apart, rhythm check
 (suggested rhythm from real contact history) and a year in review.
 

@@ -54,7 +54,8 @@ Keep it short: decisions and status, not a diary.
       tests in `tests/trips.test.js`, SPEC 4.2, SETUP step 7). Original plan: (upcoming, non-recurring events whose summary/location mention a
       city where someone lives; skip `places.home_city`; `calendar_sync.trips` setting) → `writeCalendarTrips`.
       Tests with sample ICS. Workflow already commits `git add -A`.
-- [ ] Phase 4b: WhatsApp chat export via Android share menu (manifest `share_target` POST files → sw.js stores
+- [x] Phase 4b (`src/core/whatsapp.js`, `src/core/zip.js`, `src/app/views/imports.js`, sw `receiveShare`;
+      also Settings → Import → WhatsApp chat… for a picked file; e2e in `e2e4.mjs`): WhatsApp chat export via Android share menu (manifest `share_target` POST files → sw.js stores
       the file in a cache → redirect to `#import` → app parses zip (DecompressionStream deflate-raw) or txt,
       finds the chat name + message dates, proposes logging last message / distinct days). Delete the file after.
 - [ ] Phase 4c: import people from phone contacts (Contact Picker API; bulk dialog: group, rhythm, last

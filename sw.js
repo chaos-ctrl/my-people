@@ -2,7 +2,8 @@
 // It never touches GitHub API requests, so your people are never cached.
 // Bump VERSION when the list of files changes.
 
-const VERSION = 'my-people-v2';
+const VERSION = 'my-people-v3';
+const SHARE = 'my-people-share'; // a file shared from another app (WhatsApp export), until the app reads it
 const SHELL = [
   './',
   'index.html',
@@ -42,6 +43,8 @@ const SHELL = [
   'src/core/rhythm.js',
   'src/core/trips.js',
   'src/core/insights.js',
+  'src/core/whatsapp.js',
+  'src/core/zip.js',
   'src/vendor/yaml.js',
 ];
 
@@ -51,7 +54,7 @@ self.addEventListener('install', event => {
 
 self.addEventListener('activate', event => {
   event.waitUntil(caches.keys()
-    .then(keys => Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k))))
+    .then(keys => Promise.all(keys.filter(k => k !== VERSION && k !== SHARE).map(k => caches.delete(k))))
     .then(() => self.clients.claim()));
 });
 
@@ -60,6 +63,10 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const req = event.request;
   const url = new URL(req.url);
+  if (req.method === 'POST' && url.origin === self.location.origin && url.pathname.endsWith('/share-target')) {
+    event.respondWith(receiveShare(req));
+    return;
+  }
   if (req.method !== 'GET' || url.origin !== self.location.origin) return;
   event.respondWith(caches.open(VERSION).then(async cache => {
     const cached = await cache.match(req, { ignoreSearch: true });
@@ -70,3 +77,21 @@ self.addEventListener('fetch', event => {
     return cached || fresh;
   }));
 });
+
+// Android share menu → "My people": keep the shared file(s) until the app opens (#import), which reads
+// and deletes them. Only this browser's storage is used; nothing is sent anywhere.
+async function receiveShare(req) {
+  const scope = self.registration.scope;
+  try {
+    const form = await req.formData();
+    await caches.delete(SHARE);
+    const cache = await caches.open(SHARE);
+    const files = form.getAll('file').filter(f => typeof f !== 'string');
+    await Promise.all(files.map((f, i) => cache.put(new Request(`${scope}shared/${i}`),
+      new Response(f, { headers: { 'content-type': f.type || 'application/octet-stream', 'x-name': encodeURIComponent(f.name || '') } }))));
+    await cache.put(new Request(`${scope}shared/meta`), new Response(JSON.stringify({
+      title: String(form.get('title') ?? ''), text: String(form.get('text') ?? ''), count: files.length,
+    }), { headers: { 'content-type': 'application/json' } }));
+  } catch { /* the app then says nothing was received */ }
+  return Response.redirect(`${scope}#import`, 303);
+}

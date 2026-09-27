@@ -106,6 +106,32 @@ for (const scheme of ['light', 'dark']) {
     await audit('insights');
     await page.click('#insights-back');
   });
+  if (scheme === 'light') await step('WhatsApp chat shared to the app → log message days', async () => {
+    await page.evaluate(() => navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready)); // the app registers it on https only
+    if (!(await page.evaluate(() => !!navigator.serviceWorker.controller))) { await page.reload(); await page.waitForSelector('#view-home:not([hidden])'); }
+    const status = await page.evaluate(async () => {
+      const chat = '20/09/2026, 21:15 - Marc Dupont: Dinner was great\n21/09/2026, 08:00 - Me: Yes!\n02/08/2026, 09:03 - Marc Dupont: Hi';
+      const form = new FormData();
+      form.append('title', 'WhatsApp Chat with Marc Dupont');
+      form.append('file', new File([chat], 'WhatsApp Chat with Marc Dupont.txt', { type: 'text/plain' }));
+      const res = await fetch('share-target', { method: 'POST', body: form });
+      return (await caches.has('my-people-share')) && res.ok;
+    });
+    if (!status) throw new Error('service worker did not keep the shared file');
+    await page.evaluate(() => { location.hash = '#import'; });
+    await page.waitForSelector('#modal[open]');
+    const title = await page.textContent('#modal-title');
+    if (title !== 'WhatsApp chat with Marc Dupont') throw new Error(title);
+    if (await page.$eval('#wa-person', s => s.value) !== 'marc-dupont') throw new Error('not matched');
+    if (await page.evaluate(() => caches.has('my-people-share'))) throw new Error('shared file not deleted');
+    await audit('whatsapp-dialog', { full: false });
+    await page.check('input[name="wa-what"][value="all"]');
+    await page.click('#modal-ok');
+    await page.waitForFunction(() => !document.querySelector('#modal').open);
+    await page.waitForTimeout(300);
+    const f = file('marc-dupont');
+    if (!/- date: 2026-09-21\n {4}type: message/.test(f) || !/- date: 2026-08-02\n {4}type: message/.test(f) || /2026-09-20\n {4}type: message/.test(f)) throw new Error(f.split('---')[1]);
+  });
   await ctx.close();
 }
 await browser.close();

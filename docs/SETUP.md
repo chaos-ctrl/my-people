@@ -200,6 +200,12 @@ and type your own **home city** so events there aren't taken for trips; untick *
 2. Tap the **⋮** menu (top right) → **Add to home screen** (or **Install app**).
 3. Tap **Install**. The app now opens like any other, full screen.
 
+**Logging WhatsApp chats.** Once installed, My people appears in Android's share menu. In a WhatsApp chat, tap
+**⋮** → **More** → **Export chat** → **Without media**, then choose **My people**. The app reads only the dates
+of the messages, suggests who the chat is with, and offers to log the last day or every day not logged yet.
+The chat itself isn't kept. (On a computer: export the chat, then in the app **Settings** → **Import** →
+**WhatsApp chat…**.)
+
 ---
 
 ## 9. Try it

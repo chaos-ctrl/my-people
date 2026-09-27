@@ -242,6 +242,10 @@ export function createSettings(ctx) {
     if (!lockSel.value) lockSel.value = '10';
 
     fill($('#device-settings'),
+      h('section.settings-section', { aria: { labelledby: 'st-import' } },
+        h('h2#st-import', 'Import'),
+        h('p.hint', 'On Android, share a WhatsApp chat straight to My people: in the chat, ⋮ → More → Export chat → Without media → My people. Elsewhere, export it and pick the file here.'),
+        h('div.actions', h('button.btn.ghost', { type: 'button', onclick: () => ctx.imports.pickFile() }, 'WhatsApp chat…'))),
       h('section.settings-section', { aria: { labelledby: 'st-dev' } },
         h('h2#st-dev', 'This device'),
         h('p.hint', 'These stay on this device only.'),
