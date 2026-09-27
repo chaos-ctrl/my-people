@@ -8,7 +8,9 @@
 //              TEST=true (test notification), EVENT_NAME (github.event_name).
 
 import { pathToFileURL } from 'node:url';
-import { args, loadSettings, loadPeople } from './lib/data-dir.js';
+import { join } from 'node:path';
+import { args, loadSettings, loadPeople, readText } from './lib/data-dir.js';
+import { readTrips } from '../src/core/trips.js';
 import { isDue, buildDigest } from './lib/digest.js';
 import { sendNtfy } from './lib/ntfy.js';
 import { readPerson } from '../src/core/model.js';
@@ -24,7 +26,8 @@ export async function run({ dir, test = false, manual = false, dryRun = false, n
 
   const people = (await loadPeople(dir)).map(p => readPerson(p.slug, p.text));
   const today = todayIn(settings.timezone, now);
-  const digest = buildDigest(people, settings, today);
+  const trips = readTrips(await readText(join(dir, 'trips.yml'), ''));
+  const digest = buildDigest(people, settings, today, { trips });
   if (digest.empty && !test && r.skip_if_empty) return log('Nothing to report, so nothing sent.'), 'empty';
 
   let body = digest.empty ? "Nothing to report: everyone's within their usual rhythm." : digest.body;
@@ -37,10 +40,13 @@ export async function run({ dir, test = false, manual = false, dryRun = false, n
   if (wantsEmail && !env.NTFY_EMAIL) log('Email is selected but the NTFY_EMAIL secret is not set; sending the push only.');
 
   if (dryRun) { log(`${title}\n${body}`); return 'dry-run'; }
+  // Buttons that open the app on each suggested person (#person/<slug>).
+  const app = env.APP_URL ? env.APP_URL.replace(/#.*$/, '') : '';
+  const actions = app ? digest.people.map(p => ({ label: p.name.split(/\s+/)[0], url: `${app}#person/${encodeURIComponent(p.slug)}` })) : [];
   await sendNtfy({
     server: env.NTFY_SERVER, topic: env.NTFY_TOPIC, token: env.NTFY_TOKEN,
     email: wantsEmail ? env.NTFY_EMAIL : undefined,
-    title, body, click: env.APP_URL, fetchImpl,
+    title, body, click: app || undefined, actions, fetchImpl,
   });
   log(`Sent: ${body.split('\n').length} line(s).`);
   return 'sent';

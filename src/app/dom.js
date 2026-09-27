@@ -44,15 +44,50 @@ export function clear(el) { el.replaceChildren(); return el; }
 export function fill(el, ...children) { el.replaceChildren(); append(el, children); return el; }
 
 let toastTimer = null;
-/** Show a short message, optionally with one action button. Returns a function that hides it. */
-export function toast(message, { action, onAction, ms = 5000 } = {}) {
+/**
+ * Show a short message with optional action buttons. Returns a function that hides it.
+ * toast('Saved.') · toast('Logged.', {actions: [{label: 'Undo', onClick}]}) · legacy {action, onAction}.
+ */
+export function toast(message, { action, onAction, actions = [], ms = 6000 } = {}) {
   const el = document.getElementById('toast');
   clearTimeout(toastTimer);
   const hide = () => { el.hidden = true; el.replaceChildren(); };
-  fill(el, h('span', message), action && h('button', { type: 'button', onclick: () => { hide(); onAction(); } }, action));
+  const all = action ? [{ label: action, onClick: onAction }, ...actions] : actions;
+  fill(el, h('span', message), all.map(a => h('button', { type: 'button', onclick: () => { hide(); a.onClick(); } }, a.label)));
   el.hidden = false;
   toastTimer = setTimeout(hide, ms);
   return hide;
+}
+
+/**
+ * A small form in the shared #modal dialog.
+ * onSubmit() may throw (the message is shown) or return false to keep the dialog open.
+ */
+export function modal({ title, body, ok = 'Save', cancel = 'Cancel', onSubmit, focus }) {
+  const dialog = document.getElementById('modal');
+  const form = document.getElementById('modal-form');
+  const err = document.getElementById('modal-error');
+  document.getElementById('modal-title').textContent = title;
+  fill(document.getElementById('modal-body'), body);
+  err.textContent = '';
+  const okBtn = document.getElementById('modal-ok');
+  okBtn.textContent = ok;
+  okBtn.hidden = !onSubmit;
+  document.getElementById('modal-cancel').textContent = onSubmit ? cancel : 'Close';
+  document.getElementById('modal-cancel').onclick = () => dialog.close();
+  form.onsubmit = async e => {
+    e.preventDefault();
+    err.textContent = '';
+    okBtn.disabled = true;
+    try {
+      if ((await onSubmit()) !== false) dialog.close();
+    } catch (ex) {
+      err.textContent = ex.message;
+    } finally { okBtn.disabled = false; }
+  };
+  const closed = openDialog(dialog);
+  (focus ? document.querySelector(focus) : form.querySelector('input, textarea, select'))?.focus();
+  return closed;
 }
 
 /** Open a <dialog> modally; resolves when it closes. */

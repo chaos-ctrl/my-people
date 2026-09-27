@@ -17,6 +17,10 @@ export const DEFAULT_SETTINGS = Object.freeze({
     lookahead_days: 7,
     skip_if_empty: true,
     detail_level: 'names',
+    rotate: true,
+    include_follow_ups: true,
+    include_trips: true,
+    include_gift_ideas: false,
   },
   calendar_sync: {
     enabled: true,
@@ -26,6 +30,10 @@ export const DEFAULT_SETTINGS = Object.freeze({
       'mariage', 'wedding', '💍', '💒'],
     ignore_keywords: [],
     fuzzy_max_distance: 2,
+    trips: true,
+  },
+  places: {
+    home_city: '',
   },
 });
 
@@ -78,6 +86,10 @@ reminders:
   lookahead_days: 7         # how far ahead to list birthdays/anniversaries
   skip_if_empty: true       # send nothing if there's nothing to say
   detail_level: names       # names | names_and_days — keep content minimal for privacy
+  rotate: true              # vary who is suggested from week to week (the most overdue always stays)
+  include_follow_ups: true  # dated "Ask about" items coming up or just past
+  include_trips: true       # upcoming trips, with who lives there
+  include_gift_ideas: false # gift ideas next to upcoming birthdays
 
 calendar_sync:
   enabled: true
@@ -88,6 +100,10 @@ calendar_sync:
                          mariage, wedding, "💍", "💒"]
   ignore_keywords: []       # events containing these are never imported
   fuzzy_max_distance: 2     # max edit distance for typo-tolerant keyword matching (words ≥ 6 letters)
+  trips: true               # spot upcoming trips to cities where your people live
+
+places:
+  home_city: ""             # where you live; events there aren't treated as trips
 `;
 
 export const REVIEW_TEMPLATE = `# Calendar events the sync couldn't match to a person. The app shows them under "Check these".

@@ -1,0 +1,31 @@
+# Settings for "My people". The app's Settings screen edits this file; you can also edit it by hand.
+timezone: Europe/Paris
+defaults:
+  frequency_days: 30        # default contact rhythm for people without their own
+
+status:                     # thresholds as a ratio of days since last contact / frequency_days
+  soon: 0.6                 # below → green, from here → yellow
+  overdue: 1.0              # from here → orange
+  long_overdue: 1.5         # from here → red
+
+reminders:
+  enabled: true
+  channels: [ntfy]          # ntfy and/or email (email is delivered via ntfy's email forwarding)
+  days: [sun]               # any of mon..sun
+  time: "09:00"             # local time in `timezone` (the hour is what counts)
+  people_count: 3           # how many overdue people to include
+  include_birthdays: true   # upcoming birthdays of people, partners, children
+  include_anniversaries: true
+  lookahead_days: 7         # how far ahead to list birthdays/anniversaries
+  skip_if_empty: true       # send nothing if there's nothing to say
+  detail_level: names       # names | names_and_days — keep content minimal for privacy
+
+calendar_sync:
+  enabled: true
+  # English and French only. Matching is case- and accent-insensitive and tolerant of typos.
+  birthday_keywords: [birthday, bday, b-day, b'day, bdays, birthdate, "🎂",
+                      anniversaire, anniv, annif, aniversaire, anniversair]
+  anniversary_keywords: [wedding anniversary, anniversary, anniv de mariage, anniversaire de mariage,
+                         mariage, wedding, "💍", "💒"]
+  ignore_keywords: []       # events containing these are never imported
+  fuzzy_max_distance: 2     # max edit distance for typo-tolerant keyword matching (words ≥ 6 letters)

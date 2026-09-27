@@ -1,95 +1,133 @@
-// Home: reach out, coming up, check these, everyone, still to find out.
+// Home: reach out, ask how it went, coming up, check these, everyone, still to find out.
 
-import { $, h, fill, toast } from '../dom.js';
-import { sortByStatus, isOverdue, upcomingDates, missingBirthdays, searchText, logContact, removeContact } from '../../core/model.js';
-import { formatAgo, formatUpcoming, formatDayFirst, parseYearly } from '../../core/dates.js';
+import { $, h, fill } from '../dom.js';
+import { sortByStatus, personStatus, needingAttention, upcomingDates, missingBirthdays, searchText, isSnoozed, removeAskItem } from '../../core/model.js';
+import { formatAgo, formatUpcoming, formatDayFirst, parseYearly, formatShortDate } from '../../core/dates.js';
+import { followUps, formatFollowUpDate } from '../../core/followups.js';
+import { openGifts } from '../../core/gifts.js';
+import { contactActions } from '../../core/contact-links.js';
+import { upcomingTrips, formatTripDates } from '../../core/trips.js';
 import { initials, normalise, firstName } from '../../core/text.js';
+import { TYPE_LABEL } from '../actions.js';
 
-const TYPES = [['seen', 'Seen'], ['call', 'Call'], ['message', 'Message']];
-const VERB = { seen: 'visit', call: 'call', message: 'message' };
 const RHYTHM = { 14: 'every 2 weeks', 30: 'monthly', 60: 'every 2 months', 90: 'every 3 months', 180: 'every 6 months', 365: 'yearly' };
 export const rhythmLabel = f => RHYTHM[f] || `every ${f} days`;
 
-export function createHome(ctx) {
-  const ui = { query: '', group: null, chooser: null };
+const searchCache = new WeakMap(); // person → normalised text (people objects are reused while unchanged)
+const searchable = p => { let t = searchCache.get(p); if (t === undefined) { t = searchText(p); searchCache.set(p, t); } return t; };
 
-  $('#search').addEventListener('input', e => { ui.query = e.target.value; renderList(); });
+export function createHome(ctx) {
+  const ui = { query: '', group: null, city: null, chooser: null };
+
+  let searchTimer = null;
+  $('#search').addEventListener('input', e => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => { ui.query = e.target.value; renderList(); }, 120);
+  });
   $('#add-person').addEventListener('click', () => ctx.openSheet(null));
+  $('#log-group').addEventListener('click', () => ctx.actions.groupDialog());
   // Tapping anywhere else closes an open Seen/Call/Message chooser.
   document.addEventListener('click', e => {
-    if (ui.chooser && !e.target.closest('.chooser') && !e.target.closest('.log')) { ui.chooser = null; renderList(); }
+    if (ui.chooser && !e.target.closest('.chooser') && !e.target.closest('.log')) setChooser(null);
   });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && ui.chooser) {
-      const slug = ui.chooser; ui.chooser = null; renderList();
+      const slug = ui.chooser; setChooser(null);
       document.querySelector(`[data-log="${CSS.escape(slug)}"]`)?.focus();
     }
   });
 
-  function statusClass(st) { return `st-${st.state}`; }
-  function lastLine(st) { return st.days === null ? 'No contact logged yet' : `Last contact ${formatAgo(st.days)}`; }
+  const statusClass = st => `st-${st.state}`;
+  const lastLine = st => (st.days === null ? 'No contact logged yet' : `Last contact ${formatAgo(st.days)}`);
 
-  async function quickLog(p, type) {
+  function quickLog(p, type) {
     ui.chooser = null;
-    const entry = { date: ctx.today(), type };
-    const who = p.name;
-    try {
-      const pending = ctx.store.updatePerson(p.slug, t => logContact(t, entry), `Log ${VERB[type]} with ${who}`);
-      renderList();
-      document.querySelector(`[data-log="${CSS.escape(p.slug)}"]`)?.focus();
-      toast(`Logged ${VERB[type]} with ${firstName(who)}.`, {
-        action: 'Undo',
-        onAction: () => ctx.store.updatePerson(p.slug, t => removeContact(t, entry), `Undo log ${VERB[type]} with ${who}`)
-          .catch(e => ctx.error(e)),
-      });
-      await pending;
-    } catch (e) { ctx.error(e); }
+    ctx.actions.log(p, type); // the store's change event redraws the list
+    document.querySelector(`[data-log="${CSS.escape(p.slug)}"]`)?.focus();
   }
 
   function render() {
     const { store } = ctx;
     const today = ctx.today();
     const settings = store.settings;
-    const sorted = sortByStatus(store.people.filter(p => !p.error), settings, today);
-    const overdue = sorted.filter(x => isOverdue(x.status));
+    const due = needingAttention(store.people, settings, today);
     const n = store.people.length;
     $('#summary').textContent = n
-      ? `${n} ${n === 1 ? 'person' : 'people'} · ${overdue.length} overdue`
+      ? `${n} ${n === 1 ? 'person' : 'people'} · ${due.length} overdue`
       : 'Add the people you want to keep close.';
 
     // Time to reach out
-    const top = overdue.slice(0, 3);
-    fill($('#reach'), top.length
-      ? top.map(({ person: p, status: st }) => h('button.card', {
-        type: 'button', class: `card ${statusClass(st)}`, onclick: () => ctx.openSheet(p.slug),
-      },
-      h('span.dot', { aria: { hidden: 'true' } }, initials(p.name)),
-      h('span.who',
-        h('span.name', p.name),
-        h('span.when', lastLine(st)),
-        p.ask[0] && h('span.ask', `Ask about: ${p.ask[0]}`))))
+    fill($('#reach'), due.length
+      ? due.slice(0, 3).map(({ person: p, status: st }) => {
+        const reach = contactActions(p)[0];
+        const past = followUps([p], today, { ahead: 0, behind: 30 }).filter(f => f.past)[0];
+        return h('div.card', { class: `card ${statusClass(st)}` },
+          h('button.open-card', { type: 'button', onclick: () => ctx.openSheet(p.slug) },
+            h('span.dot', { aria: { hidden: 'true' } }, initials(p.name)),
+            h('span.who',
+              h('span.name', p.name),
+              h('span.when', lastLine(st)),
+              past ? h('span.ask', `Ask how it went: ${past.text}`) : p.ask[0] && h('span.ask', `Ask about: ${p.ask[0]}`))),
+          h('div.card-actions',
+            reach && h('button.pill.primary', { type: 'button', onclick: () => ctx.actions.reachOut(p, reach) }, reach.label),
+            h('button.pill', { type: 'button', onclick: () => ctx.actions.snoozeFor(p, 14), aria: { label: `Not now: don't suggest ${p.name} for 2 weeks` } }, 'Not now')));
+      })
       : h('div.calm', n ? "Everyone's within their usual rhythm." : 'Nobody here yet. Add someone below.'));
 
-    // Coming up
-    const coming = upcomingDates(store.people, today, 30);
-    fill($('#coming'), coming.length
-      ? coming.map(u => h('div.bday',
-        h('span',
-          u.name,
-          u.kind === 'anniversary'
-            ? h('span.rel', ` · wedding anniversary${u.years ? `, ${u.years} years` : ''}`)
-            : [u.relation && h('span.rel', ` · ${u.relation}`), u.years && h('span.rel', ` · turns ${u.years}`)]),
-        h('span.d', formatUpcoming(u.date, u.days))))
-      : h('div.calm', 'Nothing in the next 30 days.'));
-
+    renderFollowUps(today);
+    renderComing(today);
     renderReview();
-    renderGroups();
+    renderFilters();
     renderList();
 
     const missing = missingBirthdays(store.people);
     $('#missing').textContent = missing.length
       ? `Birthdays still to find out: ${missing.map(m => `${m.name} (${m.relation})`).join(', ')}.`
       : '';
+  }
+
+  function renderFollowUps(today) {
+    const past = followUps(ctx.store.people, today, { ahead: 0, behind: 30 }).filter(f => f.past);
+    $('#followups-box').hidden = !past.length;
+    fill($('#followups'), past.map(f => h('div.followup',
+      h('button.open-card.main', { type: 'button', onclick: () => ctx.openSheet(f.slug) },
+        h('strong', firstName(f.name)), ` · ${f.text}`, h('span.extra', formatFollowUpDate(f))),
+      h('button.pill', {
+        type: 'button', aria: { label: `Done: remove “${f.text}” from ${f.name}` },
+        onclick: () => ctx.store.updatePerson(f.slug, t => removeAskItem(t, f.raw), `Follow-up done: ${f.name}`).catch(e => ctx.error(e)),
+      }, 'Done'))));
+  }
+
+  function renderComing(today) {
+    const { store } = ctx;
+    const items = [
+      ...upcomingDates(store.people, today, 30).map(u => ({ ...u, sort: u.days })),
+      ...followUps(store.people, today, { ahead: 30, behind: 0 }).filter(f => !f.past).map(f => ({ ...f, kind: 'followup', sort: Math.max(0, f.days) })),
+      ...upcomingTrips(store.trips, store.people, today, 30, store.settings).map(t => ({ ...t, kind: 'trip', sort: Math.max(0, t.days) })),
+    ].sort((a, b) => a.sort - b.sort);
+    fill($('#coming'), items.length ? items.map(u => {
+      if (u.kind === 'followup') {
+        return h('button.bday.open-card', { type: 'button', onclick: () => ctx.openSheet(u.slug) },
+          h('span.main', h('span.tag', 'Ask'), `${firstName(u.name)} · ${u.text}`),
+          h('span.d', u.month ? formatFollowUpDate(u) : formatUpcoming(u.date, u.days)));
+      }
+      if (u.kind === 'trip') {
+        return h('div.bday',
+          h('span.main', h('span.tag', 'Trip'), u.city,
+            h('span.extra', u.people.length ? `${u.people.map(p => p.name).join(', ')} ${u.people.length === 1 ? 'lives' : 'live'} there` : 'Nobody on file lives there')),
+          h('span.d', formatTripDates(u)));
+      }
+      const person = store.person(u.slug);
+      const gifts = u.kind === 'birthday' && !u.relation && person ? openGifts(person.gifts) : [];
+      return h('div.bday',
+        h('span.main',
+          u.name,
+          u.kind === 'anniversary'
+            ? h('span.rel', ` · wedding anniversary${u.years ? `, ${u.years} years` : ''}`)
+            : [u.relation && h('span.rel', ` · ${u.relation}`), u.years && h('span.rel', ` · turns ${u.years}`)],
+          gifts.length > 0 && h('span.extra', `Gift ideas: ${gifts.map(g => g.text + (g.status === 'bought' ? ' (bought)' : '')).join(', ')}`)),
+        h('span.d', formatUpcoming(u.date, u.days)));
+    }) : h('div.calm', 'Nothing in the next 30 days.'));
   }
 
   function renderReview() {
@@ -108,43 +146,69 @@ export function createHome(ctx) {
     }));
   }
 
-  function renderGroups() {
-    const groups = [...new Set(ctx.store.people.map(p => p.group).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-    if (ui.group && !groups.includes(ui.group)) ui.group = null;
-    fill($('#groups'), groups.length < 1 ? [] : [null, ...groups].map(g => h('button.chip', {
-      type: 'button', aria: { pressed: String(ui.group === g) },
-      onclick: () => { ui.group = g; renderGroups(); renderList(); },
-    }, g ?? 'All')));
+  function chipRow(el, values, key, all) {
+    if (ui[key] && !values.includes(ui[key])) ui[key] = null;
+    fill(el, values.length < 1 ? [] : [null, ...values].map(v => h('button.chip', {
+      type: 'button', aria: { pressed: String(ui[key] === v) },
+      onclick: () => { ui[key] = v; renderFilters(); renderList(); },
+    }, v ?? all)));
+  }
+
+  function renderFilters() {
+    const uniq = k => [...new Set(ctx.store.people.map(p => p[k]).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    chipRow($('#groups'), uniq('group'), 'group', 'All groups');
+    const cities = uniq('city');
+    chipRow($('#cities'), cities.length > 1 ? cities : [], 'city', 'All cities');
+  }
+
+  /** One row of "Everyone". */
+  function rowEl(p, st, today = ctx.today()) {
+    const settings = ctx.store.settings;
+    const snoozed = isSnoozed(p, today);
+    const meta = [p.group, p.city, rhythmLabel(st.frequency), st.days === null ? 'never logged' : formatAgo(st.days),
+      snoozed && `not now until ${formatShortDate(p.snoozed_until)}`].filter(Boolean).join(' · ');
+    const width = `${Math.min(st.sortRatio / (settings.status.long_overdue || 1.5), 1) * 100}%`;
+    const reach = contactActions(p)[0];
+    const right = ui.chooser === p.slug
+      ? h('span.chooser', { role: 'group', aria: { label: `How were you in touch with ${p.name}?` } },
+        Object.entries(TYPE_LABEL).map(([type, label], i) => h('button', {
+          type: 'button', onclick: () => quickLog(p, type), dataset: i === 0 ? { first: '1' } : {},
+        }, label)),
+        reach && h('button.reach', { type: 'button', onclick: () => { ui.chooser = null; ctx.actions.reachOut(p, reach); } }, reach.label))
+      : h('button.log', {
+        type: 'button', dataset: { log: p.slug }, aria: { label: `Log contact with ${p.name}` },
+        onclick: () => { setChooser(p.slug); document.querySelector('.chooser [data-first]')?.focus(); },
+      }, 'Log contact');
+    return h('div.row', { class: `row ${statusClass(st)}${snoozed ? ' snoozed' : ''}`, dataset: { slug: p.slug } },
+      h('button.open', { type: 'button', onclick: () => ctx.openSheet(p.slug) },
+        h('span.dot', { aria: { hidden: 'true' } }, initials(p.name)),
+        h('span.text', h('span.name', p.name), h('span.meta', meta))),
+      right,
+      h('span.bar', { aria: { hidden: 'true' }, style: { '--w': width } }));
+  }
+
+  /** Open or close the Seen/Call/Message chooser, redrawing only the rows concerned. */
+  function setChooser(slug) {
+    const before = ui.chooser;
+    ui.chooser = slug;
+    for (const s of new Set([before, slug].filter(Boolean))) {
+      const el = document.querySelector(`#list .row[data-slug="${CSS.escape(s)}"]`);
+      const p = ctx.store.person(s);
+      if (el && p && !p.error) el.replaceWith(rowEl(p, personStatus(p, ctx.store.settings, ctx.today())));
+    }
   }
 
   function renderList() {
     const { store } = ctx;
     const settings = store.settings;
+    const today = ctx.today();
     const q = normalise(ui.query.trim());
     const ok = store.people.filter(p => !p.error);
     const broken = store.people.filter(p => p.error);
-    const rows = sortByStatus(ok, settings, ctx.today())
-      .filter(({ person: p }) => (!ui.group || p.group === ui.group) && (!q || searchText(p).includes(q)));
+    const rows = sortByStatus(ok, settings, today)
+      .filter(({ person: p }) => (!ui.group || p.group === ui.group) && (!ui.city || p.city === ui.city) && (!q || searchable(p).includes(q)));
 
-    const els = rows.map(({ person: p, status: st }) => {
-      const meta = [p.group, rhythmLabel(st.frequency), st.days === null ? 'never logged' : formatAgo(st.days)].filter(Boolean).join(' · ');
-      const width = `${Math.min(st.sortRatio / (settings.status.long_overdue || 1.5), 1) * 100}%`;
-      const right = ui.chooser === p.slug
-        ? h('span.chooser', { role: 'group', aria: { label: `How were you in touch with ${p.name}?` } },
-          TYPES.map(([type, label], i) => h('button', {
-            type: 'button', onclick: () => quickLog(p, type), dataset: i === 0 ? { first: '1' } : {},
-          }, label)))
-        : h('button.log', {
-          type: 'button', dataset: { log: p.slug }, aria: { label: `Log contact with ${p.name}` },
-          onclick: () => { ui.chooser = p.slug; renderList(); document.querySelector('.chooser [data-first]')?.focus(); },
-        }, 'Log contact');
-      return h('div.row', { class: `row ${statusClass(st)}` },
-        h('button.open', { type: 'button', onclick: () => ctx.openSheet(p.slug), aria: { label: `${p.name}: ${lastLine(st).toLowerCase()}` } },
-          h('span.dot', { aria: { hidden: 'true' } }, initials(p.name)),
-          h('span.text', h('span.name', p.name), h('span.meta', meta))),
-        right,
-        h('span.bar', { aria: { hidden: 'true' }, style: { '--w': width } }));
-    });
+    const els = rows.map(({ person: p, status: st }) => rowEl(p, st, today));
 
     const brokenEls = broken.filter(p => !q || normalise(p.slug).includes(q)).map(p => h('div.row.broken.st-none',
       h('button.open', { type: 'button', onclick: () => ctx.showBroken(p) },

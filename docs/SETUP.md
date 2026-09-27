@@ -10,9 +10,14 @@ This guide takes you from nothing to a working app on your phone, one click at a
   Only you (and whoever you give a token to) can see it.
 - **A weekly reminder** on your phone through the free **ntfy** app, sent by GitHub even when the app is closed.
 - **Birthdays from Google Calendar**, copied into your people once a day (read-only; nothing is ever written to Google).
+- Optionally, **your AI assistant** (Claude, ChatGPT…) connected to your people (step 10).
 
-> **Before you start:** the app's code must be on the `main` branch of `chaos-ctrl/my-people`. If it is
-> still in a pull request, open the pull request on GitHub and click **Merge pull request**, then **Confirm merge**.
+> **Before you start:** the app's newest code must be on the `main` branch of `chaos-ctrl/my-people`. If it is
+> still on a `claude/…` branch, merge it first (see [Merging new work](#merging-new-work) at the end).
+>
+> Tip: the links below go straight to the right GitHub page. GitHub has two different "Settings": the
+> **repository's** (a tab on the repository page) and **your account's** (under your profile picture). The
+> guide says which one each time.
 
 ---
 
@@ -20,12 +25,11 @@ This guide takes you from nothing to a working app on your phone, one click at a
 
 ### 1a. Turn on GitHub Pages
 
-1. Go to <https://github.com/chaos-ctrl/my-people>.
-2. Click **Settings** (the gear tab at the top of the repository, not your account settings).
-3. In the left sidebar, under **Code and automation**, click **Pages**.
-4. Under **Build and deployment**, set **Source** to **Deploy from a branch**.
-5. Under **Branch**, choose **main** and **/ (root)**, then click **Save**.
-6. Wait one or two minutes, then refresh the page. A box at the top says
+1. Open <https://github.com/chaos-ctrl/my-people/settings/pages> (the repository's Pages settings).
+   *If you only see "Add a domain", you're in your account's settings instead: use the link above.*
+2. Under **Build and deployment**, set **Source** to **Deploy from a branch**.
+3. Under **Branch**, choose **main** and **/ (root)**, then click **Save**.
+4. Wait one or two minutes, then refresh the page. A box at the top says
    **Your site is live at https://chaos-ctrl.github.io/my-people/**.
 
 ### 1b. Create the "stable" bookmark
@@ -44,10 +48,10 @@ version, a branch called `stable`, so a mistake in new code can't touch your sec
 
 ## 2. Create your private data repository
 
-1. Click the **+** at the top right of any GitHub page, then **New repository**.
+1. Open <https://github.com/new> (or click the **+** at the top right of any GitHub page → **New repository**).
 2. **Owner**: `chaos-ctrl`. **Repository name**: `my-people-data`.
 3. Choose **Private**. This matters: your notes about people go here.
-4. Tick **Add a README file** (so the repository isn't empty).
+4. Turn on **Add README** (it may be a switch or a tick box **Add a README file**) so the repository isn't empty.
 5. Click **Create repository**.
 
 Now copy five files into it from the `data-repo-template` folder of `my-people`. For each file in the table:
@@ -83,23 +87,22 @@ and a `.github` folder. The `people` folder appears by itself when you add your 
 The app talks to GitHub with a *fine-grained personal access token*: a password that only works on
 `my-people-data` and only for what the app needs.
 
-1. Click your profile picture (top right of GitHub) → **Settings**.
-2. At the very bottom of the left sidebar, click **Developer settings**.
-3. Click **Personal access tokens** → **Fine-grained tokens**.
-4. Click **Generate new token**. GitHub may ask for your password or a code.
-5. **Token name**: `My people`. **Description**: `Phone app` (anything helps you recognise it).
-6. **Resource owner**: `chaos-ctrl`.
-7. **Expiration**: choose **90 days** (recommended). Note the date shown; the app asks for it.
-8. **Repository access**: choose **Only select repositories**, then pick **chaos-ctrl/my-people-data**.
+1. Open <https://github.com/settings/personal-access-tokens/new>. GitHub may ask for your password or a code.
+   (The long way: profile picture → **Settings** (your account's) → at the bottom of the left sidebar
+   **Developer settings** → **Personal access tokens** → **Fine-grained tokens** → **Generate new token**.)
+2. **Token name**: `My people`. **Description**: `Phone app` (anything helps you recognise it).
+3. **Resource owner**: `chaos-ctrl`.
+4. **Expiration**: choose **90 days** (recommended). Note the date shown; the app asks for it.
+5. **Repository access**: choose **Only select repositories**, then pick **chaos-ctrl/my-people-data**.
    Don't choose "All repositories".
-9. Under **Permissions** → **Repository permissions** (click **Add permissions** if you only see a button):
+6. Under **Permissions** → **Repository permissions** (click **Add permissions** if you only see a button):
    - **Contents**: **Read and write**.
    - **Actions**: **Read and write**. This is only for the app's "Send a test notification" button;
      skip it if you don't want that button.
    - **Metadata** is added automatically as read-only. Leave everything else at **No access**.
-10. Click **Generate token** (and confirm).
-11. The token starts with `github_pat_`. Click the copy icon next to it. **GitHub shows it only once.**
-    Keep this tab open until you've pasted it into the app.
+7. Click **Generate token** (and confirm).
+8. The token starts with `github_pat_`. Click the copy icon next to it. **GitHub shows it only once.**
+   Keep this tab open until you’ve pasted it into the app.
 
 Do this once per device if you like (a token for the phone, another for the computer). That way you can
 revoke one without affecting the other.
@@ -152,12 +155,13 @@ the messages*, so the name must be long and random, like a password.
 
 Secrets are values the robots can use but nobody can read back, not even you.
 
-1. Go to <https://github.com/chaos-ctrl/my-people-data>.
-2. Click **Settings** → in the left sidebar **Secrets and variables** → **Actions**.
-3. Click **New repository secret**. **Name**: `NTFY_TOPIC`. **Secret**: paste your topic. Click **Add secret**.
-4. *(Optional)* To also get the reminder by email, add `NTFY_EMAIL` with your email address, and tick
+1. Open <https://github.com/chaos-ctrl/my-people-data/settings/secrets/actions/new>.
+   (The long way: the repository's **Settings** tab → left sidebar **Secrets and variables** → **Actions** →
+   **New repository secret**.)
+2. **Name**: `NTFY_TOPIC`. **Secret**: paste your topic. Click **Add secret**.
+3. *(Optional)* To also get the reminder by email, add `NTFY_EMAIL` with your email address, and tick
    **Email (via ntfy)** in the app's Settings → Reminders.
-5. You'll add `CALENDAR_ICS_URL` in the next step.
+4. You'll add `CALENDAR_ICS_URL` in the next step.
 
 Advanced, optional: `NTFY_SERVER` if you run your own ntfy server (default `https://ntfy.sh`),
 and `NTFY_TOKEN` if that server requires an access token.
@@ -187,6 +191,11 @@ address, confirm, then copy the new address and update the `CALENDAR_ICS_URL` se
 Good to know: Google's automatic "Birthdays" calendar (from Google Contacts) is a separate calendar and isn't
 included. Birthdays you created yourself as yearly events ("Marc 🎂", "Anniversaire Julie") are.
 
+**Trips.** The robot also spots upcoming one-off events (flights, hotel stays, weekends away) whose place or title
+names a city where one of your people lives (their **City** field), and shows "Lyon: Nina lives there" under
+**Coming up**. Only the city and dates are saved, in `trips.yml`. In the app, open **Settings** → **Calendar sync**
+and type your own **home city** so events there aren't taken for trips; untick **Spot trips** to turn it off.
+
 ---
 
 ## 8. Add the app to your home screen
@@ -194,6 +203,16 @@ included. Birthdays you created yourself as yearly events ("Marc 🎂", "Anniver
 1. In Chrome on your phone, open <https://chaos-ctrl.github.io/my-people/>.
 2. Tap the **⋮** menu (top right) → **Add to home screen** (or **Install app**).
 3. Tap **Install**. The app now opens like any other, full screen.
+
+**Logging WhatsApp chats.** Once installed, My people appears in Android's share menu. In a WhatsApp chat, tap
+**⋮** → **More** → **Export chat** → **Without media**, then choose **My people**. The app reads only the dates
+of the messages, suggests who the chat is with, and offers to log the last day or every day not logged yet.
+The chat itself isn't kept. (On a computer: export the chat, then in the app **Settings** → **Import** →
+**WhatsApp chat…**.)
+
+**Adding people from your phone's contacts.** In the app, **Settings** → **Import** → **Phone contacts…** (Chrome
+on Android only), tick the people, then choose a group, how often you'd like to be in touch and roughly when
+you last were. Only the name, one phone number and one email are saved.
 
 ---
 
@@ -209,11 +228,11 @@ the red message. It usually names the missing secret.
 
 **First calendar sync**
 
-1. In `my-people-data`, click the **Actions** tab.
+1. Open <https://github.com/chaos-ctrl/my-people-data/actions>.
 2. In the left list, click **Calendar sync**.
 3. Click **Run workflow** (on the right) → **Run workflow**.
 4. After about 30 seconds, refresh. A green tick means it worked. Open the run to see the summary, e.g.
-   `Calendar sync: 3 updated, 2 to review`.
+   `Calendar sync: 3 updated, 2 to review` (plus `, 1 trip` when trips changed).
 5. Reopen the app. Birthdays appear under **Coming up**, and anything unclear appears under **Check these**,
    where you can attach it to someone, create a new person, or dismiss it.
 
@@ -224,6 +243,72 @@ scheduled run).
 
 **GitHub Actions minutes.** Private repositories get 2,000 free minutes a month. The hourly check uses about
 750, so you're well within the limit.
+
+---
+
+## 10. Optional: connect an AI assistant (Claude, ChatGPT…)
+
+This lets you say "had dinner with Marc yesterday, he's starting a new job" to your assistant, on your phone
+or computer, and have it logged. It's a small free program (a "connector") on **Cloudflare**, which signs you in
+with GitHub. Only your GitHub account is let in, and it can only reach `my-people-data`. It can read, log and
+add, never delete. About 20 minutes.
+
+**A. Put the connector online (Cloudflare)**
+
+1. Go to <https://dash.cloudflare.com/sign-up> and create a free account (confirm your email).
+2. In the left menu, click **Compute (Workers)** → **Workers & Pages** → **Create**.
+3. Choose **Import a repository** → **Connect GitHub**. GitHub asks which repositories Cloudflare may see:
+   choose **Only select repositories** → `my-people` → **Install & Authorize**.
+4. Back on Cloudflare, pick `my-people`. Set **Project name** to `my-people-connector`. Leave the build
+   command empty and the deploy command as `npx wrangler deploy`. Under advanced settings, set the
+   **production branch** to `stable` (like the scheduled jobs, it then only updates when you move `stable`).
+5. Click **Create and deploy** and wait for the green tick (a minute or two).
+6. Note the address it shows, like `https://my-people-connector.yourname.workers.dev`. Opening it says the
+   connector isn't set up yet: that's expected. Below, **YOUR-ADDRESS** means this address.
+
+**B. Create the GitHub App (the sign-in)**
+
+1. On GitHub: your profile picture (top right) → **Settings** → at the bottom of the left menu,
+   **Developer settings** → **GitHub Apps** → **New GitHub App**.
+2. **GitHub App name**: something unique, e.g. `My people connector yourname`.
+3. **Homepage URL**: YOUR-ADDRESS.
+4. **Callback URL**: YOUR-ADDRESS followed by `/callback` (e.g. `https://my-people-connector.yourname.workers.dev/callback`).
+   Keep **Expire user authorization tokens** ticked.
+5. Under **Webhook**, untick **Active**.
+6. Under **Permissions** → **Repository permissions** → **Contents**: choose **Read and write**. Leave the rest.
+7. **Where can this GitHub App be installed?**: **Only on this account**. Click **Create GitHub App**.
+8. On the next page, copy the **Client ID** (starts with `Iv`) somewhere safe for a moment.
+9. Click **Generate a new client secret** and copy it too (it's shown only once).
+10. In the left menu, click **Install App** → **Install** next to your account → **Only select repositories** →
+    `my-people-data` → **Install**.
+
+**C. Give the connector its settings (Cloudflare)**
+
+1. In Cloudflare, open **Workers & Pages** → `my-people-connector` → **Settings** → **Variables and Secrets** → **Add**.
+2. Add these five, one at a time (**Type** as shown, then **Save**/**Deploy**):
+
+   | Type | Variable name | Value |
+   |---|---|---|
+   | Text | `GITHUB_CLIENT_ID` | the Client ID from B.8 |
+   | Secret | `GITHUB_CLIENT_SECRET` | the client secret from B.9 |
+   | Text | `ALLOWED_LOGIN` | your GitHub username, e.g. `chaos-ctrl` |
+   | Text | `DATA_REPO` | `chaos-ctrl/my-people-data` |
+   | Secret | `TOKEN_SECRET` | 40 or more random letters and digits (use your password manager's generator) |
+
+3. Open YOUR-ADDRESS again: it now says "This is working".
+
+**D. Add it to your assistant**
+
+- **Claude** (<https://claude.ai>, then it also works in the phone app): **Settings** → **Connectors** →
+  **Add custom connector**. Name: `My people`. URL: YOUR-ADDRESS followed by `/mcp`. Click **Add**, then
+  **Connect**: a page asks you to confirm → **Continue with GitHub**; the first time, GitHub asks you to
+  authorise your app → **Authorize**. If that confirmation page ever appears when you didn't just connect an
+  assistant, click **Cancel**. In a chat, try "who should I call this week?".
+- **Other assistants** that support remote MCP connectors with sign-in (e.g. ChatGPT in developer mode): add a
+  connector with the same `/mcp` address.
+
+**To cut access**: on GitHub, **Settings** → **Applications** → **Authorized GitHub Apps** → **Revoke** next to your
+app. Changing `TOKEN_SECRET` in Cloudflare also signs every assistant out.
 
 ---
 
@@ -238,10 +323,23 @@ The app warns you 14 days before the token expires.
 If you lose your phone: delete its token on GitHub straight away. Nothing else is needed. The phone doesn't hold
 your people's data, only the (encrypted) token.
 
+## Merging new work
+
+When an AI assistant has built something new, it's on a branch named like `claude/…`. To make it the app:
+
+1. Open <https://github.com/chaos-ctrl/my-people/pulls>. If there's a pull request for that branch, click it and
+   go to step 3.
+2. Otherwise open <https://github.com/chaos-ctrl/my-people/compare>, choose **compare:** `claude/…` (the branch
+   name you were given), then click **Create pull request**, and **Create pull request** again.
+3. Wait for the checks at the bottom to turn green (a few minutes), then click **Merge pull request** →
+   **Confirm merge**.
+
+The app updates by itself a minute later. The robots update when you move `stable` (next section).
+
 ## Updating the app
 
 The app itself (what you see in the browser) updates as soon as new code is merged into `main`.
-The robots keep using the `stable` bookmark until you move it:
+The robots (and the AI connector, if you set it up) keep using the `stable` bookmark until you move it:
 
 1. Go to <https://github.com/chaos-ctrl/my-people/compare/stable...main>.
 2. Click **Create pull request**, then **Create pull request** again.
@@ -251,12 +349,16 @@ The robots keep using the `stable` bookmark until you move it:
 
 - The public repository `my-people` never contains personal data. Your people live only in the private
   `my-people-data`.
-- The app keeps your people in memory only, never stored in the browser. Locking (after 10 idle minutes by
-  default) clears them and the token.
+- The app keeps your people in memory only, never stored in the browser, unless you turn on **Keep an encrypted
+  copy for offline use** (Settings → This device): then an encrypted copy stays on that device, locked like your
+  token. Locking (after 10 idle minutes by default) clears your people and the token from memory.
 - Notifications on the public ntfy.sh server can be read by anyone who guesses the topic, hence the long random
   topic and the "names only" default. Running your own ntfy server removes this; then set `NTFY_SERVER` (and
   `NTFY_TOKEN` if needed).
 - AI assistants with access to `my-people-data` can update people for you; `AGENTS.md` there tells them how.
+  When `data-repo-template/AGENTS.md` changes in `my-people` (new features), copy it again into
+  `my-people-data` the same way as in step 2 so assistants know the new rules. Settings need nothing:
+  missing keys in `settings.yml` use their defaults.
 
 ## Troubleshooting
 
@@ -267,4 +369,6 @@ The robots keep using the `stable` bookmark until you move it:
 | "…can read the repository but not save to it" | Give the token **Contents: Read and write**. You can edit an existing token's permissions on GitHub. |
 | "The token needs the Actions: Read and write permission" | Only needed for the test button; add it to the token, or run **Reminders** from the Actions tab with **test** ticked. |
 | "This file needs fixing" in the list | Someone (or an AI) broke that person's file. Tap it → **Open the file on GitHub** and fix the part between the `---` lines. |
+| The connector says "Not allowed" | `ALLOWED_LOGIN` in Cloudflare must be the GitHub account you signed in with. |
+| The assistant can't reach your people ("Not found") | Check `DATA_REPO`, and that the GitHub App is installed on `my-people-data` (B.10). |
 | A reminder run fails with "settings.yml can't be read" | The settings file has a typo. Open it on GitHub; the error names the line. |

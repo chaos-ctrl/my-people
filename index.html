@@ -89,14 +89,23 @@
         <p class="sub" id="summary" aria-live="polite">Loading…</p>
       </div>
       <nav class="topnav" aria-label="App">
-        <button type="button" class="btn ghost small" id="go-settings">Settings</button>
         <button type="button" class="btn ghost small" id="lock-now">Lock</button>
       </nav>
     </header>
+    <nav class="subnav" aria-label="Screens">
+      <a class="chip" href="#weekly" id="go-weekly">Weekly review</a>
+      <a class="chip" href="#insights" id="go-insights">Insights</a>
+      <a class="chip" href="#settings" id="go-settings">Settings</a>
+    </nav>
     <div id="banners"></div>
 
     <h2 id="reach-title">Time to reach out</h2>
     <div class="reach" id="reach" aria-labelledby="reach-title"></div>
+
+    <div id="followups-box" hidden>
+      <h2 id="followups-title">Ask how it went</h2>
+      <div id="followups" aria-labelledby="followups-title"></div>
+    </div>
 
     <h2 id="coming-title">Coming up <span class="h-sub">next 30 days</span></h2>
     <div id="coming" aria-labelledby="coming-title"></div>
@@ -107,21 +116,43 @@
       <div id="review" aria-labelledby="review-title"></div>
     </div>
 
-    <h2 id="everyone-title">Everyone</h2>
+    <div class="h2row">
+      <h2 id="everyone-title">Everyone</h2>
+      <button type="button" class="btn ghost small" id="log-group">Log a group</button>
+    </div>
     <div class="tools">
       <input class="field" id="search" type="search" placeholder="Search" aria-label="Search people" autocomplete="off">
       <button type="button" class="btn" id="add-person">Add person</button>
     </div>
     <div class="chips" id="groups" role="group" aria-label="Filter by group"></div>
+    <div class="chips" id="cities" role="group" aria-label="Filter by city"></div>
     <div class="list" id="list" aria-labelledby="everyone-title"></div>
     <p class="missing" id="missing"></p>
+  </section>
+
+  <!-- Weekly review -->
+  <section id="view-weekly" class="view" hidden aria-labelledby="weekly-title">
+    <header class="top">
+      <h1 id="weekly-title">Weekly review</h1>
+      <nav class="topnav" aria-label="Weekly review"><a class="btn ghost small" href="#" id="weekly-back">Done</a></nav>
+    </header>
+    <div id="weekly"></div>
+  </section>
+
+  <!-- Insights -->
+  <section id="view-insights" class="view" hidden aria-labelledby="insights-title">
+    <header class="top">
+      <h1 id="insights-title">Insights</h1>
+      <nav class="topnav" aria-label="Insights"><a class="btn ghost small" href="#" id="insights-back">Done</a></nav>
+    </header>
+    <div id="insights"></div>
   </section>
 
   <!-- Settings -->
   <section id="view-settings" class="view" hidden aria-labelledby="settings-title">
     <header class="top">
       <h1 id="settings-title">Settings</h1>
-      <nav class="topnav" aria-label="Settings"><button type="button" class="btn ghost small" id="settings-back">Done</button></nav>
+      <nav class="topnav" aria-label="Settings"><a class="btn ghost small" href="#" id="settings-back">Done</a></nav>
     </header>
     <div id="settings-banners"></div>
     <form id="settings-form" novalidate></form>
@@ -152,6 +183,18 @@
     <div class="actions end">
       <button type="button" class="btn ghost" id="picker-cancel">Cancel</button>
       <button type="submit" class="btn" id="picker-ok">Attach</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="modal" aria-labelledby="modal-title">
+  <form class="sheet" id="modal-form" novalidate>
+    <h3 id="modal-title"></h3>
+    <div id="modal-body"></div>
+    <p class="error" id="modal-error" role="alert"></p>
+    <div class="actions end">
+      <button type="button" class="btn ghost" id="modal-cancel">Cancel</button>
+      <button type="submit" class="btn" id="modal-ok">OK</button>
     </div>
   </form>
 </dialog>

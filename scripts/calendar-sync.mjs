@@ -2,6 +2,7 @@
 // One-way calendar sync: reads birthdays and anniversaries from a Google Calendar iCal address and
 // fills them into person files. Never writes to Google, never deletes anything, never overwrites a
 // date you typed yourself. Unclear events go to calendar-review.yml ("Check these" in the app).
+// Upcoming one-off events in a city where someone lives are kept as trips in trips.yml (city and dates only).
 //
 //   node scripts/calendar-sync.mjs --data <data repo dir> [--ics file.ics] [--dry-run]
 //
@@ -14,6 +15,8 @@ import { args, loadSettings, loadPeople, readText, writeText } from './lib/data-
 import { parseIcs } from './lib/ics.js';
 import { syncCalendar } from './lib/calendar.js';
 import { todayIn } from '../src/core/dates.js';
+import { readPerson } from '../src/core/model.js';
+import { readTrips, detectTrips, writeCalendarTrips } from '../src/core/trips.js';
 
 export async function run({ dir, icsFile, dryRun = false, env = process.env, log = console.log, now = new Date(), fetchImpl = fetch } = {}) {
   const settings = await loadSettings(dir);
@@ -31,19 +34,33 @@ export async function run({ dir, icsFile, dryRun = false, env = process.env, log
 
   const reviewPath = join(dir, 'calendar-review.yml');
   const reviewText = await readText(reviewPath, '');
-  const result = syncCalendar({
-    events: parseIcs(ics),
-    people: await loadPeople(dir),
-    reviewText,
-    settings,
-    today: todayIn(settings.timezone, now),
-  });
+  const events = parseIcs(ics);
+  const people = await loadPeople(dir);
+  const today = todayIn(settings.timezone, now);
+  const result = syncCalendar({ events, people, reviewText, settings, today });
+
+  // Trips: replace the calendar ones in trips.yml (manual ones are kept); don't create the file for nothing.
+  const tripsPath = join(dir, 'trips.yml');
+  result.tripsText = null;
+  result.trips = [];
+  if (settings.calendar_sync.trips) {
+    const before = await readText(tripsPath, '');
+    result.trips = detectTrips(events, people.map(p => readPerson(p.slug, p.text)), settings, today);
+    if (result.trips.length || readTrips(before).some(t => t.source === 'calendar')) {
+      const after = writeCalendarTrips(before, result.trips);
+      if (after !== before) {
+        result.tripsText = after;
+        result.message += `, ${result.trips.length} trip${result.trips.length === 1 ? '' : 's'}`;
+      }
+    }
+  }
 
   if (!dryRun) {
     for (const [slug, text] of result.changed) await writeText(join(dir, 'people', `${slug}.md`), text);
     if (result.reviewText !== null) await writeText(reviewPath, result.reviewText);
+    if (result.tripsText !== null) await writeText(tripsPath, result.tripsText);
   }
-  const changed = result.changed.size > 0 || result.reviewText !== null;
+  const changed = result.changed.size > 0 || result.reviewText !== null || result.tripsText !== null;
   log(changed ? result.message : 'Calendar sync: nothing new.');
   if (env.GITHUB_OUTPUT && !dryRun) {
     await appendFile(env.GITHUB_OUTPUT, `changed=${changed}\nmessage=${result.message}\n`);

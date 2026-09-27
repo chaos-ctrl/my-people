@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { isDue, buildDigest } from '../scripts/lib/digest.js';
+import { isDue, buildDigest, pickSuggestions } from '../scripts/lib/digest.js';
 import { run } from '../scripts/reminders.mjs';
 import { resolveSettings, SETTINGS_TEMPLATE, REVIEW_TEMPLATE, DEFAULT_SETTINGS } from '../src/core/settings.js';
 import { readPerson } from '../src/core/model.js';
@@ -62,9 +62,11 @@ test('skip_if_empty is respected; test mode always sends', async () => {
   assert.equal(sent.length, 0);
   assert.equal(await run({ dir, now: new Date('2026-10-14T10:07:00Z'), test: true, env, log: () => {}, fetchImpl: fakeFetch(sent) }), 'sent');
   assert.equal(sent.length, 1);
-  assert.equal(sent[0].url, 'https://ntfy.example/abc');
-  assert.equal(sent[0].headers.Title, 'My people (test)');
-  assert.equal(sent[0].headers.Click, 'https://app.example/');
+  const msg = JSON.parse(sent[0].body);
+  assert.equal(sent[0].url, 'https://ntfy.example/');
+  assert.equal(msg.topic, 'abc');
+  assert.equal(msg.title, 'My people (test)');
+  assert.equal(msg.click, 'https://app.example/');
 
   const noSkip = dataDir(SETTINGS_TEMPLATE.replace('skip_if_empty: true', 'skip_if_empty: false'));
   assert.equal(await run({ dir: noSkip, now, env, log: () => {}, fetchImpl: fakeFetch(sent) }), 'sent');
@@ -77,8 +79,10 @@ test('sends at the right time, with email forwarding when chosen', async () => {
   const sent = [];
   assert.equal(await run({ dir, now: new Date('2026-10-18T08:07:00Z'), env, log: () => {}, fetchImpl: fakeFetch(sent) }), 'not-due');
   assert.equal(await run({ dir, now: new Date('2026-10-18T07:07:00Z'), env: { ...env, NTFY_EMAIL: 'me@example.com' }, log: () => {}, fetchImpl: fakeFetch(sent) }), 'sent');
-  assert.equal(sent[0].body, 'Reach out: Anna');
-  assert.equal(sent[0].headers.Email, 'me@example.com');
+  const msg = JSON.parse(sent[0].body);
+  assert.equal(msg.message, 'Reach out: Anna');
+  assert.equal(msg.email, 'me@example.com');
+  assert.deepEqual(msg.actions, [{ action: 'view', label: 'Anna', url: 'https://app.example/#person/anna', clear: true }]);
   const off = dataDir(SETTINGS_TEMPLATE.replace('  enabled: true\n  channels', '  enabled: false\n  channels'));
   assert.equal(await run({ dir: off, now: new Date('2026-10-18T07:07:00Z'), env, log: () => {}, fetchImpl: fakeFetch(sent) }), 'off');
 });
@@ -87,4 +91,20 @@ test('templates parse to the defaults and match the data-repo files', () => {
   assert.deepEqual(parseYaml(SETTINGS_TEMPLATE), JSON.parse(JSON.stringify(DEFAULT_SETTINGS)));
   assert.equal(readFileSync(new URL('../data-repo-template/settings.yml', import.meta.url), 'utf8'), SETTINGS_TEMPLATE);
   assert.equal(readFileSync(new URL('../data-repo-template/calendar-review.yml', import.meta.url), 'utf8'), REVIEW_TEMPLATE);
+});
+
+test('rotation keeps the most overdue and cycles the rest week by week', () => {
+  const c = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+  const weeks = ['2026-09-06', '2026-09-13', '2026-09-20', '2026-09-27'].map(d => pickSuggestions(c, 3, true, d).join(''));
+  assert.ok(weeks.every(w => w[0] === 'A' && w.length === 3));
+  assert.equal(new Set(weeks).size, 3);                       // pool of 6, 2 slots → 3 distinct combinations
+  assert.deepEqual(pickSuggestions(c, 3, false, '2026-09-06'), ['A', 'B', 'C']);
+  assert.deepEqual(pickSuggestions(['A', 'B'], 3, true, '2026-09-06'), ['A', 'B']);
+});
+
+test('digest includes follow-ups, trips and (optionally) gift ideas', () => {
+  const s = resolveSettings({ reminders: { include_gift_ideas: true, detail_level: 'names_and_days' } });
+  const julie = person('j', '---\nname: Julie Martin\ncity: Lyon\nbirthday: 09-30\ncontacts:\n  - date: 2026-09-20\n    type: seen\n---\n\n## Ask about\n- 28/09/2026: Her exam\n\n## Gift ideas\n- Lamp\n- [given 2025] Scarf\n');
+  const d = buildDigest([julie], s, '2026-09-26', { trips: [{ city: 'Lyon', from: '2026-10-01', to: '2026-10-03', source: 'calendar' }] });
+  assert.equal(d.body, 'Ask about: Julie Martin, Her exam (Mon 28 Sep)\nBirthdays: Julie Martin (Wed 30 Sep) — gift ideas: Lamp\nLyon 1–3 Oct: Julie Martin lives there');
 });

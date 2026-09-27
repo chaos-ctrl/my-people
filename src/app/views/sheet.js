@@ -1,16 +1,20 @@
 // The person sheet: view and edit everything about one person, or add someone new.
 
 import { $, h, fill, openDialog, toast } from '../dom.js';
-import { formOf, formChanges, applyFormChanges, createPersonText, readPerson, CONTACT_TYPES } from '../../core/model.js';
+import { formOf, formChanges, applyFormChanges, createPersonText, readPerson, CONTACT_TYPES, isSnoozed, setFrequency } from '../../core/model.js';
 import { newPersonFile } from '../../core/person-file.js';
 import { parseDayFirst, formatDayFirst, formatShortDate, addDays, isIsoDay } from '../../core/dates.js';
 import { FREQUENCY_PRESETS } from '../../core/settings.js';
+import { contactActions } from '../../core/contact-links.js';
+import { parseGift, formatGift, GIFT_STATUSES } from '../../core/gifts.js';
+import { suggestRhythm } from '../../core/rhythm.js';
+import { firstName } from '../../core/text.js';
 import { rhythmLabel } from './home.js';
-
-const TYPE_LABEL = { seen: 'Seen', call: 'Call', message: 'Message' };
+import { TYPE_LABEL } from '../actions.js';
+import { timelineChart } from './charts.js';
 
 // "When were you last in touch?" for new people. Approximate is fine.
-const LAST_CONTACT = [
+export const LAST_CONTACT = [
   ['', 'Choose…'],
   ['0', 'Today'],
   ['3', 'This week'],
@@ -25,6 +29,7 @@ const LAST_CONTACT = [
   ['3652', 'About 10 years ago'],
   ['exact', 'On a specific date…'],
 ];
+const GIFT_LABEL = { idea: 'Idea', bought: 'Bought', given: 'Given' };
 
 export function createSheet(ctx) {
   const dialog = $('#sheet');
@@ -37,10 +42,10 @@ export function createSheet(ctx) {
   $('#sheet-remove').addEventListener('click', remove);
   form.addEventListener('submit', e => { e.preventDefault(); save(); });
 
-  const field = (id, label, input, hint) => [h('label', { for: id }, label), input, hint && h('p.hint', hint)];
+  const field = (id, label, input, hint) => [h('label', { for: id }, label), input, hint && h('p.hint', { id: `${id}-hint` }, hint)];
   const text = (id, value = '', attrs = {}) => h('input.field', { id, value, autocomplete: 'off', ...attrs });
-  const area = (id, value = '', placeholder = '') => {
-    const t = h('textarea.field', { id, placeholder });
+  const area = (id, value = '', placeholder = '', attrs = {}) => {
+    const t = h('textarea.field', { id, placeholder, ...attrs });
     t.value = value;
     return t;
   };
@@ -61,16 +66,70 @@ export function createSheet(ctx) {
     return row;
   }
 
+  function giftRow(raw = '') {
+    const g = parseGift(raw);
+    const status = h('select.field.gstatus', { aria: { label: 'Status' } }, GIFT_STATUSES.map(s => h('option', { value: s }, GIFT_LABEL[s])));
+    status.value = g.status;
+    const row = h('div.gift', { dataset: { when: g.when ?? '', status: g.status } },
+      h('input.field.gtext', { value: g.text, placeholder: 'Something they’d like', aria: { label: 'Gift idea' }, autocomplete: 'off' }),
+      status,
+      h('button.icon-btn', { type: 'button', aria: { label: `Remove gift ${g.text}`.trim() }, onclick: () => row.remove() }, '✕'));
+    return row;
+  }
+
+  function readGifts() {
+    return [...body.querySelectorAll('.gift')].map(r => {
+      const text = r.querySelector('.gtext').value.trim();
+      const status = r.querySelector('.gstatus').value;
+      const when = status === 'given' ? (r.dataset.status === 'given' && r.dataset.when ? r.dataset.when : ctx.today().slice(0, 4)) : null;
+      return text ? formatGift({ status, when, text }) : '';
+    }).filter(Boolean);
+  }
+
   function renderHistory() {
-    const list = [...state.contacts].sort((a, b) => (a.date < b.date ? 1 : -1));
+    const list = [...state.contacts].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
     fill($('#history'), list.length
       ? list.map(c => h('li',
-        h('span', `${formatShortDate(c.date, true)} · ${TYPE_LABEL[c.type] ?? c.type}`),
+        h('span', `${formatShortDate(c.date, true)} · ${TYPE_LABEL[c.type] ?? c.type}`, c.note && h('span.note', c.note)),
         h('button.log', {
           type: 'button', aria: { label: `Delete contact on ${formatShortDate(c.date, true)}` },
           onclick: () => { state.contacts.splice(state.contacts.indexOf(c), 1); renderHistory(); },
         }, 'Delete')))
       : h('li.hint', 'No contacts logged yet.'));
+    const extra = state.notesOnly;
+    if (extra.length) {
+      $('#history').append(...extra.map(n => h('li', h('span', `${formatShortDate(n.date, true)} · note`, h('span.note', n.note)))));
+    }
+  }
+
+  function topActions(p) {
+    const today = ctx.today();
+    const acts = contactActions(p);
+    const snoozed = isSnoozed(p, today);
+    const snoozeSel = h('select.pill', {
+      aria: { label: 'Not now' },
+      onchange: e => { const d = Number(e.target.value); if (!Number.isNaN(d)) { dialog.close(); ctx.actions.snoozeFor(p, d); } },
+    }, h('option', { value: '' }, snoozed ? `Not now until ${formatShortDate(p.snoozed_until)}` : 'Not now…'),
+    snoozed && h('option', { value: '0' }, 'Suggest again'),
+    [[7, 'For a week'], [14, 'For 2 weeks'], [30, 'For a month'], [90, 'For 3 months']].map(([d, l]) => h('option', { value: String(d) }, l)));
+    const out = [h('div.sheet-actions',
+      acts.map(a => h('button.pill.primary', { type: 'button', onclick: () => { dialog.close(); ctx.actions.reachOut(p, a); } }, a.label)),
+      snoozeSel)];
+    const sug = suggestRhythm(p.contacts, today);
+    const current = p.frequency_days || ctx.store.settings.defaults.frequency_days;
+    if (sug && sug.days !== current) {
+      out.push(h('div.notice', h('span', `You’ve been in touch about every ${sug.median} days lately. Change the rhythm to “${rhythmLabel(sug.days)}”?`),
+        h('button.pill', {
+          type: 'button', onclick: async () => {
+            dialog.close();
+            try {
+              await ctx.store.updatePerson(p.slug, t => setFrequency(t, sug.days), `Update ${p.name}`);
+              toast(`${firstName(p.name)}: ${rhythmLabel(sug.days)}.`);
+            } catch (e) { ctx.error(e); }
+          },
+        }, 'Use it')));
+    }
+    return out;
   }
 
   /** Open for `slug`, or for a new person with optional `prefill` (from the calendar review list). */
@@ -79,20 +138,27 @@ export function createSheet(ctx) {
     if (slug && !p) return;
     const base = p ? formOf(p) : formOf(readPerson('new', newPersonFile({ name: 'x' })));
     if (!p) Object.assign(base, { name: '', ...prefill?.form });
-    state = { slug, before: structuredClone(base), contacts: base.contacts.map(c => ({ ...c })), review: prefill?.review ?? null };
+    state = {
+      slug, before: structuredClone(base), contacts: base.contacts.map(c => ({ ...c })), review: prefill?.review ?? null,
+      notesOnly: p ? p.log.filter(n => !p.contacts.some(c => c.date === n.date && (!n.type || n.type === c.type))) : [],
+    };
     errorEl.textContent = '';
     $('#sheet-title').textContent = p ? p.name : 'Add person';
     $('#sheet-remove').hidden = !p;
 
     const kids = h('div#kids', base.children.map(kidRow));
+    const gifts = h('div#gifts', base.gifts.split('\n').filter(Boolean).map(giftRow));
     const contactBox = p
       ? [
+        h('h4.label#hist-title', 'History'),
+        p.contacts.length > 1 && timelineChart(p, ctx.today()),
         h('label', { for: 'l-date' }, 'Log a past contact'),
         h('div.logrow',
           h('input.field', { type: 'date', id: 'l-date', value: ctx.today(), max: ctx.today(), aria: { label: 'Date' } }),
           h('select.field', { id: 'l-type', aria: { label: 'Type' } }, CONTACT_TYPES.map(t => h('option', { value: t }, TYPE_LABEL[t]))),
           h('button.btn.ghost', { type: 'button', onclick: addPast }, 'Add')),
-        h('ul.history#history'),
+        h('input.field#l-note', { placeholder: 'Optional note', aria: { label: 'Note for the past contact' }, autocomplete: 'off' }),
+        h('ul.history#history', { aria: { labelledby: 'hist-title' } }),
       ]
       : [
         h('label', { for: 'l-when' }, 'When were you last in touch?'),
@@ -107,12 +173,16 @@ export function createSheet(ctx) {
       ];
 
     fill(body,
+      p && topActions(p),
       field('f-name', 'Name', text('f-name', base.name, { required: true, autocomplete: 'off' })),
       h('div.two',
         h('div', field('f-group', 'Group', text('f-group', base.group, { list: 'groups-list', placeholder: 'Friends, family, work…' }))),
         h('div', field('f-freq', 'See or talk', frequencySelect(base.frequency_days)))),
       h('datalist#groups-list', [...new Set(ctx.store.people.map(x => x.group).filter(Boolean))].map(g => h('option', { value: g }))),
-      field('f-aliases', 'Other names', text('f-aliases', base.aliases, { placeholder: 'Nicknames, separated by commas' })),
+      h('div.two',
+        h('div', field('f-city', 'City', text('f-city', base.city, { list: 'cities-list', placeholder: 'Where they live' }))),
+        h('div', field('f-aliases', 'Other names', text('f-aliases', base.aliases, { placeholder: 'Nicknames, with commas' })))),
+      h('datalist#cities-list', [...new Set(ctx.store.people.map(x => x.city).filter(Boolean))].map(g => h('option', { value: g }))),
       h('div.two',
         h('div', field('f-bday', 'Birthday', text('f-bday', formatDayFirst(base.birthday), { placeholder: 'DD/MM or DD/MM/YYYY', inputmode: 'numeric' }))),
         h('div', field('f-partner', 'Partner', text('f-partner', base.partner_name, { placeholder: 'Name' })))),
@@ -124,12 +194,25 @@ export function createSheet(ctx) {
       kids,
       h('button.btn.ghost', { type: 'button', onclick: () => { const r = kidRow(); kids.append(r); r.querySelector('input').focus(); } }, 'Add child'),
       h('p.hint', "Leave a birthday empty if you don't know it yet. It'll show up in the “still to find out” list."),
-      field('f-ask', 'Ask about', area('f-ask', base.ask, 'New job, the house move, the marathon… one per line')),
-      field('f-gifts', 'Gift ideas', area('f-gifts', base.gifts, 'Things they mentioned wanting, one per line')),
+      field('f-ask', 'Ask about', area('f-ask', base.ask, 'New job, the house move… one per line', { aria: { describedby: 'f-ask-hint' } }),
+        'Start a line with a date to be reminded, e.g. “15/11: Her exam” or “03/2027: Baby due”.'),
+      h('span.label#gifts-label', 'Gift ideas'),
+      gifts,
+      h('button.btn.ghost', { type: 'button', onclick: () => { const r = giftRow(); gifts.append(r); r.querySelector('input').focus(); } }, 'Add gift idea'),
       field('f-notes', 'Notes', area('f-notes', base.notes)),
+      h('details.more', { open: !!(base.whatsapp || base.email || base.phone || base.links) },
+        h('summary', 'Ways to reach them'),
+        h('div.two',
+          h('div', field('f-whatsapp', 'WhatsApp number', text('f-whatsapp', base.whatsapp, { inputmode: 'tel', placeholder: '+33 6 12 34 56 78' }))),
+          h('div', field('f-phone', 'Phone', text('f-phone', base.phone, { inputmode: 'tel' })))),
+        field('f-email', 'Email', text('f-email', base.email, { type: 'email', inputmode: 'email' })),
+        field('f-links', 'Other apps', area('f-links', base.links, 'Signal: https://signal.me/#p/+33…\nhttps://instagram.com/…', { aria: { describedby: 'f-links-hint' } }),
+          'One per line, optionally “Label: link”. Tapping one opens it and logs a message.')),
       contactBox);
     kids.setAttribute('role', 'group');
     kids.setAttribute('aria-labelledby', 'kids-label');
+    gifts.setAttribute('role', 'group');
+    gifts.setAttribute('aria-labelledby', 'gifts-label');
     if (p) renderHistory();
 
     const closed = openDialog(dialog);
@@ -141,9 +224,11 @@ export function createSheet(ctx) {
   function addPast() {
     const date = $('#l-date').value;
     if (!isIsoDay(date)) { errorEl.textContent = 'Pick a date for the past contact.'; return; }
-    if (date > ctx.today()) { errorEl.textContent = "That date is in the future."; return; }
+    if (date > ctx.today()) { errorEl.textContent = 'That date is in the future.'; return; }
     errorEl.textContent = '';
-    state.contacts.push({ date, type: $('#l-type').value });
+    const note = $('#l-note').value.trim();
+    state.contacts.push({ date, type: $('#l-type').value, note });
+    $('#l-note').value = '';
     renderHistory();
   }
 
@@ -157,10 +242,16 @@ export function createSheet(ctx) {
     };
     const name = $('#f-name').value.trim();
     if (!name) return { error: 'Please enter a name.', focus: '#f-name' };
+    const lines = id => $(id).value.split('\n').map(s => s.trim()).filter(Boolean).join('\n');
     const form = {
       name,
       aliases: $('#f-aliases').value.split(',').map(s => s.trim()).filter(Boolean).join(', '),
       group: $('#f-group').value.trim(),
+      city: $('#f-city').value.trim(),
+      whatsapp: $('#f-whatsapp').value.trim(),
+      email: $('#f-email').value.trim(),
+      phone: $('#f-phone').value.trim(),
+      links: lines('#f-links'),
       frequency_days: Number($('#f-freq').value),
       birthday: date('#f-bday', 'birthday'),
       partner_name: $('#f-partner').value.trim(),
@@ -176,8 +267,8 @@ export function createSheet(ctx) {
         })(),
         ...(r.dataset.index !== '' ? { index: Number(r.dataset.index) } : {}),
       })).filter(c => c.name),
-      ask: $('#f-ask').value.split('\n').map(s => s.trim()).filter(Boolean).join('\n'),
-      gifts: $('#f-gifts').value.split('\n').map(s => s.trim()).filter(Boolean).join('\n'),
+      ask: lines('#f-ask'),
+      gifts: readGifts().join('\n'),
       notes: $('#f-notes').value.trim(),
       contacts: state.contacts,
     };
@@ -187,6 +278,7 @@ export function createSheet(ctx) {
     }
     if (bad.length) return { error: `Check the ${bad.map(b => b[0]).join(', ')}: use DD/MM or DD/MM/YYYY.`, focus: bad[0][1] };
     if (form.partner_birthday && !form.partner_name) return { error: "Add the partner's name too.", focus: '#f-partner' };
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return { error: 'That email address doesn’t look right.', focus: '#f-email' };
 
     if (!state.slug) {
       const when = $('#l-when').value;
@@ -195,7 +287,7 @@ export function createSheet(ctx) {
       else if (when !== '') d = addDays(ctx.today(), -Number(when));
       if (!d || !isIsoDay(d)) return { error: 'Choose when you were last in touch (a rough guess is fine).', focus: when === 'exact' ? '#l-exact' : '#l-when' };
       if (d > ctx.today()) return { error: "The last contact can't be in the future.", focus: '#l-exact' };
-      form.contacts = [{ date: d, type: $('#l-type').value }];
+      form.contacts = [{ date: d, type: $('#l-type').value, note: '' }];
     }
     return { form };
   }
@@ -204,25 +296,26 @@ export function createSheet(ctx) {
     const r = readForm();
     if (r.error) {
       errorEl.textContent = r.error;
-      if (r.focus) $(r.focus)?.focus();
+      if (r.focus) { const el = $(r.focus); el?.closest('details')?.setAttribute('open', ''); el?.focus(); }
       return;
     }
     const { form } = r;
     const btn = $('#sheet-save');
     btn.disabled = true;
     errorEl.textContent = '';
+    const today = ctx.today();
     try {
       if (state.slug) {
         const changes = formChanges(state.before, form);
         if (Object.keys(changes).length) {
           const p = ctx.store.person(state.slug);
-          const pending = ctx.store.updatePerson(state.slug, t => applyFormChanges(t, changes), `Update ${form.name || p.name}`);
+          const pending = ctx.store.updatePerson(state.slug, t => applyFormChanges(t, changes, { today }), `Update ${form.name || p.name}`);
           dialog.close();
           await pending;
         } else dialog.close();
       } else {
         const review = state.review;
-        await ctx.store.createPerson(form.name, createPersonText(form), `Add ${form.name}`);
+        await ctx.store.createPerson(form.name, createPersonText(form, { today }), `Add ${form.name}`);
         dialog.close();
         toast(`Added ${form.name}.`);
         if (review) await ctx.resolveReview(review, `Add ${form.name} from the calendar`);
