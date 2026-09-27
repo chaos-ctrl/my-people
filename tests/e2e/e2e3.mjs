@@ -4,7 +4,7 @@ const TOOLS = process.env.TOOLS;
 const { chromium } = await import(`${TOOLS}/node_modules/playwright-core/index.mjs`);
 const DATA = new URL('./data', import.meta.url).pathname;
 const SHOTS = (process.env.SHOTS || '/tmp') + '/';
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || '/opt/pw-browsers/chromium' });
 const ctx = await browser.newContext();
 const page = await ctx.newPage();
 const errors = []; page.on('pageerror', e => errors.push(e.message));

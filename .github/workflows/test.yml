@@ -18,3 +18,41 @@ jobs:
         with:
           node-version: 22
       - run: npm test
+
+  # Browser flows (fake GitHub, fictional people) and the connector in Cloudflare's runtime. The tools are
+  # installed outside the repo: the project itself has no dependencies.
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TOOLS: /tmp/tools
+      SHOTS: /tmp/shots
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install test tools
+        run: |
+          mkdir -p /tmp/tools /tmp/shots && cd /tmp/tools && npm init -y >/dev/null
+          npm i playwright-core@1.63.0 axe-core@4.13.0 esbuild@0.28.2 miniflare@4.20260730.0 @modelcontextprotocol/sdk@1.30.1
+          npx playwright-core install --with-deps chromium
+          echo "CHROMIUM=$(node -e "console.log(require('/tmp/tools/node_modules/playwright-core').chromium.executablePath())")" >> "$GITHUB_ENV"
+      - name: Serve the app
+        run: |
+          python3 -m http.server 8123 --bind 127.0.0.1 >/dev/null 2>&1 &
+          sleep 1
+      - run: node tests/e2e/e2e.mjs
+      - run: node tests/e2e/e2e2.mjs
+      - run: node tests/e2e/e2e3.mjs
+      - run: node tests/e2e/e2e4.mjs
+      - run: node tests/e2e/e2e5.mjs
+      - run: node tests/e2e/a11y.mjs
+      - run: node tests/e2e/connector-workerd.mjs
+      - name: Keep the screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: /tmp/shots
+          if-no-files-found: ignore

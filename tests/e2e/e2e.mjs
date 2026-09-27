@@ -6,7 +6,7 @@ const { chromium } = await import(`${TOOLS}/node_modules/playwright-core/index.m
 const DATA = new URL('./data', import.meta.url).pathname;
 const SHOTS = (process.env.SHOTS || '/tmp') + '/';
 const shots = SHOTS;
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || '/opt/pw-browsers/chromium' });
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
 const page = await ctx.newPage();
 const errors = [];
@@ -14,7 +14,7 @@ page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') er
 page.on('pageerror', e => errors.push('PAGEERROR ' + e.message));
 const log = [];
 const gh = mockGitHub(page, { dir: DATA, log });
-const step = async (name, fn) => { try { await fn(); console.log('✓', name); } catch (e) { console.log('✗', name, '\n   ', e.message.split('\n').slice(0, 4).join('\n    ')); } };
+const step = async (name, fn) => { try { await fn(); console.log('✓', name); } catch (e) { process.exitCode = 1; console.log('✗', name, '\n   ', e.message.split('\n').slice(0, 4).join('\n    ')); } };
 
 await page.goto('http://127.0.0.1:8123/index.html');
 await step('setup screen shows', () => page.waitForSelector('#view-setup:not([hidden])', { timeout: 3000 }));

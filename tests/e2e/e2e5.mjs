@@ -4,7 +4,7 @@ import { mockGitHub } from './mockgh.mjs';
 const TOOLS = process.env.TOOLS;
 const { chromium } = await import(`${TOOLS}/node_modules/playwright-core/index.mjs`);
 const DATA = new URL('./data', import.meta.url).pathname;
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || '/opt/pw-browsers/chromium' });
 const step = async (name, fn) => { try { await fn(); console.log('✓', name); } catch (e) { process.exitCode = 1; console.log('✗', name, '\n   ', e.message.split('\n').slice(0, 6).join('\n    ')); } };
 const errors = [];
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });

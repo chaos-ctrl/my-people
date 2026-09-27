@@ -6,7 +6,7 @@ const { chromium } = await import(`${TOOLS}/node_modules/playwright-core/index.m
 const { snapshot } = await import(`${TOOLS}/node_modules/lighthouse/core/index.js`);
 const puppeteer = (await import(`${TOOLS}/node_modules/puppeteer-core/lib/puppeteer/puppeteer-core.js`)).default;
 const DATA = new URL('./data', import.meta.url).pathname;
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--remote-debugging-port=9333'] });
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || '/opt/pw-browsers/chromium', args: ['--remote-debugging-port=9333'] });
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
 const page = await ctx.newPage();
 mockGitHub(page, { dir: DATA });

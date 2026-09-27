@@ -70,6 +70,7 @@ export class Store extends EventTarget {
     this.files.clear();
     this.local.clear();
     this.pending.clear();
+    this.parsed = null;
     this.people = [];
     this.review = { pending: [], dismissed: [] };
     this.gh = null;
@@ -83,10 +84,19 @@ export class Store extends EventTarget {
   }
 
   rebuild() {
+    // Parsing is the slow part (the YAML library); only files whose text changed are parsed again.
+    const parsed = new Map();
     this.people = [...new Set([...this.files.keys(), ...this.local.keys()])]
       .filter(p => /^people\/[^/]+\.md$/.test(p) && this.text(p) !== null)
       .sort()
-      .map(path => ({ ...readPerson(path.slice(7, -3), this.text(path)), path }));
+      .map(path => {
+        const text = this.text(path);
+        const hit = this.parsed?.get(path);
+        const person = hit && hit.text === text ? hit.person : { ...readPerson(path.slice(7, -3), text), path };
+        parsed.set(path, { text, person });
+        return person;
+      });
+    this.parsed = parsed;
     const s = this.text('settings.yml');
     try { this.settings = resolveSettings(s ? parseYaml(s) : {}); this.settingsError = null; }
     catch (e) { this.settings = resolveSettings({}); this.settingsError = e.message; }

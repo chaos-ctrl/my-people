@@ -7,7 +7,7 @@ const { chromium } = await import(`${TOOLS}/node_modules/playwright-core/index.m
 const DATA = new URL('./data', import.meta.url).pathname;
 const SHOTS = (process.env.SHOTS || '/tmp') + '/';
 const axe = readFileSync(TOOLS + '/node_modules/axe-core/axe.min.js', 'utf8');
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || '/opt/pw-browsers/chromium' });
 const step = async (name, fn) => { try { await fn(); console.log('✓', name); } catch (e) { process.exitCode = 1; console.log('✗', name, '\n   ', e.message.split('\n').slice(0, 6).join('\n    ')); } };
 const errors = [];
 let failures = 0;
