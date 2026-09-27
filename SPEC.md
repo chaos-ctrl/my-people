@@ -125,7 +125,8 @@ Rules:
 a Log line without a matching contact is shown but doesn't count as a contact.
 
 **Dated follow-ups**: an *Ask about* line that starts with a date — `15/11/2026: …`, `15/11: …`,
-`2026-11-15: …` or `03/2027: …` (a whole month); the separator is `:` or ` - `. Around that date the person
+`2026-11-15: …` or `03/2027: …` (a whole month), or with an English or French month name (`15 November 2026: …`,
+`November 15: …`, `1er mars: …`, `mars 2027: …`); the separator is `:` or ` - `. Around that date the person
 shows in *Ask how it went* (home, weekly review, reminders). Without a year, the nearest occurrence is meant;
 the app writes the year in when it saves the file. Lines without a date are plain reminders.
 

@@ -56,7 +56,7 @@ export function createHome(ctx) {
         const reach = contactActions(p)[0];
         const past = followUps([p], today, { ahead: 0, behind: 30 }).filter(f => f.past)[0];
         return h('div.card', { class: `card ${statusClass(st)}` },
-          h('button.open-card', { type: 'button', onclick: () => ctx.openSheet(p.slug), aria: { label: `${p.name}: ${lastLine(st).toLowerCase()}` } },
+          h('button.open-card', { type: 'button', onclick: () => ctx.openSheet(p.slug) },
             h('span.dot', { aria: { hidden: 'true' } }, initials(p.name)),
             h('span.who',
               h('span.name', p.name),
@@ -182,7 +182,7 @@ export function createHome(ctx) {
           onclick: () => { ui.chooser = p.slug; renderList(); document.querySelector('.chooser [data-first]')?.focus(); },
         }, 'Log contact');
       return h('div.row', { class: `row ${statusClass(st)}${snoozed ? ' snoozed' : ''}` },
-        h('button.open', { type: 'button', onclick: () => ctx.openSheet(p.slug), aria: { label: `${p.name}: ${lastLine(st).toLowerCase()}` } },
+        h('button.open', { type: 'button', onclick: () => ctx.openSheet(p.slug) },
           h('span.dot', { aria: { hidden: 'true' } }, initials(p.name)),
           h('span.text', h('span.name', p.name), h('span.meta', meta))),
         right,

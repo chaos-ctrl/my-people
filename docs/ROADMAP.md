@@ -72,7 +72,10 @@ Keep it short: decisions and status, not a diary.
       Settings toggle, e2e5.mjs). Decision: the data key is derived (HKDF) from the token rather than a
       separately sealed random key — same protection, no re-sealing when the setting changes. Original plan: offline mode (encrypted cache of files with a data key sealed next to the token; read-only
       offline + queued quick logs).
-- [ ] Nice to have: Lighthouse run; French date words in follow-ups; per-person "places" filter.
+- [x] Nice to have: Lighthouse run (`tests/e2e/lighthouse.mjs`: 100 accessibility / 100 best practices on home,
+      weekly, insights, settings; fixed label-in-name on person cards); month names (EN/FR) in follow-ups.
+- [ ] Per-person "places" filter: **needs the user's input** — unclear whether this means extra cities per
+      person (e.g. `places: [Lyon, Annecy]` used by trips and the city filter) or something else.
 
 ## User to-do (remind them)
 1. Merge `claude/eloquent-davinci-hks9r0` into `main` (a PR can be opened for them on request).

@@ -116,3 +116,15 @@ test('snoozed people are not suggested', () => {
   const b = readPerson('b', '---\nname: B\nsnoozed_until: 2026-10-01\ncontacts:\n  - date: 2026-01-01\n    type: seen\n---\n');
   assert.deepEqual(needingAttention([a, b], s, today).map(x => x.person.name), ['A']);
 });
+
+test('follow-up dates with month names (English and French)', () => {
+  const p = s => parseFollowUp(s, today);
+  assert.equal(p('15 November 2026: Exam').date, '2026-11-15');
+  assert.equal(p('November 15: Exam').date, '2026-11-15');
+  assert.equal(p('Nov 15, 2027 - Exam').date, '2027-11-15');
+  assert.equal(p('1er mars: Anniv').date, '2027-03-01');
+  assert.equal(p('15 novembre: Examen').date, '2026-11-15');
+  assert.deepEqual([p('mars 2027: Bébé').date, p('mars 2027: Bébé').end, p('Sept 2027: Move').month], ['2027-03-01', '2027-03-31', true]);
+  for (const s of ['May: nothing', 'Marc: nothing', '31 février: x', '12 Angry Men: film']) assert.equal(p(s), null, s);
+  assert.equal(normaliseFollowUp('15 novembre: Examen', today), '15/11/2026: Examen');
+});
