@@ -37,6 +37,7 @@ export class Store extends EventTarget {
     this.settingsError = null;
     this.review = { pending: [], dismissed: [] };
     this.trips = [];
+    this.readOnly = null;     // a message while offline: writes are refused (quick logs are queued elsewhere)
   }
 
   changed() { this.dispatchEvent(new Event('change')); }
@@ -49,6 +50,19 @@ export class Store extends EventTarget {
     if (all.settings) this.files.set('settings.yml', all.settings);
     if (all.review) this.files.set('calendar-review.yml', all.review);
     if (all.trips) this.files.set('trips.yml', all.trips);
+    this.rebuild();
+  }
+
+  /** Use files saved on this device (offline copy) instead of GitHub. */
+  loadFrom(files) {
+    this.files = new Map(files);
+    this.local.clear();
+    this.rebuild();
+  }
+
+  /** Show a change without sending it (a contact logged offline, sent later). */
+  applyLocal(path, text) {
+    this.local.set(path, text);
     this.rebuild();
   }
 
@@ -100,6 +114,7 @@ export class Store extends EventTarget {
    * The screen updates at once; if GitHub has newer versions, changes are re-applied to them and retried.
    */
   updateFiles(entries, message) {
+    if (this.readOnly) return Promise.reject(new Error(this.readOnly));
     const optimistic = [];
     try {
       for (const e of entries) {

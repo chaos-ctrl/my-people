@@ -6,7 +6,7 @@
 //   pin     — token encrypted with a key derived from a PIN (PBKDF2-SHA256, 600,000 iterations, random salt).
 //   plain   — token stored as is. Trusted personal devices only.
 //   session — token kept in memory only; asked every visit.
-// People data is never stored in the browser.
+// People data is never stored in the browser, unless the optional offline copy is on (see offline.js).
 
 const KEY = 'mp.device';
 const PBKDF2_ITERATIONS = 600000;

@@ -5,6 +5,7 @@ import { h, toast, modal } from './dom.js';
 import { logContact, removeContact, addLogNote, snooze, CONTACT_TYPES, needingAttention } from '../core/model.js';
 import { addDays, isIsoDay } from '../core/dates.js';
 import { firstName, normalise } from '../core/text.js';
+import { GitHubError } from './github.js';
 
 export const TYPE_LABEL = { seen: 'Seen', call: 'Call', message: 'Message' };
 export const VERB = { seen: 'visit', call: 'call', message: 'message' };
@@ -21,11 +22,15 @@ export function createActions(ctx) {
   async function log(p, type, { date = ctx.today(), note = '' } = {}) {
     const entry = { date, type, note };
     const who = p.name;
+    const keep = () => { ctx.queueLog(p, entry); toast(`Saved on this device: ${VERB[type]} with ${firstName(who)}. It’ll be sent when you’re back online.`); };
+    if (ctx.offline()) { keep(); return; }
     const pending = ctx.store.updatePerson(p.slug, t => logContact(t, entry), `Log ${VERB[type]} with ${who}`);
     const actions = [{ label: 'Undo', onClick: () => undo(p, entry) }];
     if (!note) actions.unshift({ label: 'Add note', onClick: () => noteDialog(p, entry) });
     toast(`Logged ${VERB[type]} with ${firstName(who)}.`, { actions });
-    try { await pending; } catch (e) { ctx.error(e); }
+    try { await pending; } catch (e) {
+      if (e instanceof GitHubError && e.status === 0) keep(); else ctx.error(e);
+    }
   }
 
   function undo(p, entry) {

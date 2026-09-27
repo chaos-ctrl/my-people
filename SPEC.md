@@ -321,8 +321,15 @@ progress bar carry the same information.
 - **Auto-lock** after N minutes of inactivity (default 10, configurable, 0 = never): clears decrypted
   token and loaded data from memory.
 - **Forget this device** button: wipes token and any cached data from this browser.
-- **No data at rest in the browser** by default: people data lives in memory only. An optional
-  "offline cache" setting may store it encrypted with the same PIN-derived key.
+- **No data at rest in the browser** by default: people data lives in memory only. The optional per-device
+  **offline copy** (Settings → This device; not in *Don't remember* mode) stores the data repository's files in
+  `localStorage` (`mp.offline`), AES-GCM-encrypted under a key derived by HKDF from the GitHub token — itself
+  stored locked by the PIN/passkey, so the copy is exactly as protected as the token (a new token makes it
+  unreadable; it's then rebuilt). When GitHub can't be reached at unlock, the app opens from the copy,
+  read-only, with an "Offline" banner; quick logs (Seen/Call/Message, contact buttons, weekly review) are
+  queued in the copy and sent in one commit on reconnect (`online` event or *Try again*), skipping any
+  contact already in the file. Other changes are refused until back online. *Forget this device* and
+  turning the setting off delete the copy.
 - Strict **Content-Security-Policy** meta tag: `default-src 'self'; connect-src https://api.github.com;
   style-src 'self'; font-src 'self'; img-src 'self' data:; script-src 'self'` (plus `worker-src`,
   `manifest-src`, `base-uri 'none'`, `form-action 'none'`, `object-src 'none'`). The font is vendored,

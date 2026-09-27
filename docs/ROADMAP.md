@@ -68,7 +68,9 @@ Keep it short: decisions and status, not a diary.
       get_person, briefing (overdue/upcoming/follow-ups/trips), log_contact(s) with note, add_note/ask/gift,
       add_person, update_person (non-destructive), snooze. Tests in Node with mocked fetch.
       SETUP.md section with click-by-click Cloudflare + GitHub App steps; AGENTS.md mention.
-- [ ] Phase 6: offline mode (encrypted cache of files with a data key sealed next to the token; read-only
+- [x] Phase 6 (`src/app/offline.js`, `Store.loadFrom/applyLocal/readOnly`, main.js queue + reconnect,
+      Settings toggle, e2e5.mjs). Decision: the data key is derived (HKDF) from the token rather than a
+      separately sealed random key — same protection, no re-sealing when the setting changes. Original plan: offline mode (encrypted cache of files with a data key sealed next to the token; read-only
       offline + queued quick logs).
 - [ ] Nice to have: Lighthouse run; French date words in follow-ups; per-person "places" filter.
 

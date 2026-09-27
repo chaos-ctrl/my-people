@@ -331,8 +331,9 @@ The robots (and the AI connector, if you set it up) keep using the `stable` book
 
 - The public repository `my-people` never contains personal data. Your people live only in the private
   `my-people-data`.
-- The app keeps your people in memory only, never stored in the browser. Locking (after 10 idle minutes by
-  default) clears them and the token.
+- The app keeps your people in memory only, never stored in the browser, unless you turn on **Keep an encrypted
+  copy for offline use** (Settings → This device): then an encrypted copy stays on that device, locked like your
+  token. Locking (after 10 idle minutes by default) clears your people and the token from memory.
 - Notifications on the public ntfy.sh server can be read by anyone who guesses the topic, hence the long random
   topic and the "names only" default. Running your own ntfy server removes this; then set `NTFY_SERVER` (and
   `NTFY_TOKEN` if needed).
