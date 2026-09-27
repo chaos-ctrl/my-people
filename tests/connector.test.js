@@ -1,67 +1,19 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { handle } from '../connector/worker.js';
 import { seal, unseal, b64u } from '../connector/seal.js';
+import { fakeGitHub } from './fixtures/fake-github.js';
 
 const env = { GITHUB_CLIENT_ID: 'Iv1.test', GITHUB_CLIENT_SECRET: 'shh', TOKEN_SECRET: 'x'.repeat(40), ALLOWED_LOGIN: 'Owner', DATA_REPO: 'o/data' };
 const ORIGIN = 'https://conn.example';
 const CLIENT_CB = 'https://claude.ai/api/mcp/auth_callback';
 
-// A fake GitHub: OAuth, /user, GraphQL load, contents PUT and git data commits. Files from tests/fixtures/data.
-const files = new Map();
-const commits = [];
-let login = 'owner';
-const sha = t => { const b = Buffer.from(t); return createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${b.length}\0`), b])).digest('hex'); };
+const gh = {};
+const fakeFetch = fakeGitHub(gh);
+const { files, commits } = gh;
 const realFetch = globalThis.fetch;
-before(() => {
-  const dir = new URL('./fixtures/data/people/', import.meta.url).pathname;
-  for (const n of readdirSync(dir)) files.set(`people/${n}`, readFileSync(dir + n, 'utf8'));
-  files.set('settings.yml', 'timezone: Europe/Paris\n');
-  let head = 1;
-  const trees = new Map();
-  globalThis.fetch = async (input, init = {}) => {
-    const url = new URL(typeof input === 'string' ? input : input.url);
-    const method = init.method ?? 'GET';
-    const body = init.body ? JSON.parse(init.body) : null;
-    const res = (status, data) => new Response(data === null ? null : JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } });
-    if (url.href === 'https://github.com/login/oauth/access_token') {
-      assert.equal(body.client_secret, 'shh');
-      if (body.code === 'bad') return res(200, { error: 'bad_verification_code' });
-      return res(200, { access_token: `ghu_${body.code ?? body.refresh_token}`, refresh_token: 'ghr_1', expires_in: 28800 });
-    }
-    assert.equal(url.origin, 'https://api.github.com');
-    if (url.pathname !== '/user') assert.equal(new Headers(init.headers).get('user-agent'), 'my-people-connector');
-    if (url.pathname === '/user') return res(200, { login });
-    if (url.pathname === '/graphql') {
-      const people = [...files].filter(([k]) => k.startsWith('people/')).map(([k, v]) => ({ name: k.slice(7), type: 'blob', oid: sha(v), object: { text: v, isTruncated: false } }));
-      const blob = k => (files.has(k) ? { oid: sha(files.get(k)), text: files.get(k) } : null);
-      return res(200, { data: { repository: { defaultBranchRef: { name: 'main' }, people: { entries: people }, settings: blob('settings.yml'), review: null, trips: null } } });
-    }
-    const base = '/repos/o/data';
-    let m;
-    if ((m = url.pathname.match(/^\/repos\/o\/data\/contents\/(.+)$/)) && method === 'PUT') {
-      const path = decodeURIComponent(m[1]);
-      if (files.has(path) && body.sha !== sha(files.get(path))) return res(409, { message: 'conflict' });
-      const text = Buffer.from(body.content, 'base64').toString('utf8');
-      files.set(path, text); commits.push(body.message); head++;
-      return res(200, { content: { sha: sha(text) } });
-    }
-    if (url.pathname === `${base}/git/ref/heads/main`) return res(200, { object: { sha: `c${head}` } });
-    if (url.pathname.startsWith(`${base}/git/commits/`)) return res(200, { tree: { sha: 't' } });
-    if (url.pathname.startsWith(`${base}/git/trees/`)) return res(200, { tree: [...files].map(([path, v]) => ({ path, type: 'blob', sha: sha(v) })) });
-    if (url.pathname === `${base}/git/trees`) { trees.set('nt', body.tree); return res(201, { sha: 'nt' }); }
-    if (url.pathname === `${base}/git/commits`) { trees.set('nc', { tree: trees.get(body.tree), message: body.message }); return res(201, { sha: 'nc' }); }
-    if (url.pathname === `${base}/git/refs/heads/main`) {
-      const c = trees.get(body.sha);
-      for (const e of c.tree) files.set(e.path, e.content);
-      commits.push(`${c.message} [${c.tree.length} files]`); head++;
-      return res(200, {});
-    }
-    return res(404, { message: `mock: ${method} ${url.pathname}` });
-  };
-});
+before(() => { globalThis.fetch = fakeFetch; });
 after(() => { globalThis.fetch = realFetch; });
 
 const call = (path, init = {}) => handle(new Request(ORIGIN + path, init), env);
@@ -140,9 +92,9 @@ test('refuses bad clients, redirect URIs and missing PKCE', async () => {
 });
 
 test('only the allowed GitHub account gets in', async () => {
-  login = 'someone-else';
+  gh.login = 'someone-else';
   const { cb } = await signIn();
-  login = 'owner';
+  gh.login = 'owner';
   assert.equal(cb.status, 403);
 });
 
