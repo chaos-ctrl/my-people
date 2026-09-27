@@ -1,10 +1,16 @@
 // Imports: WhatsApp chat exports (shared from Android's share menu via the service worker, or picked as a
 // file) become logged messages. Only the dates are used; the chat itself is read in memory and never saved.
+// Phone contacts (Contact Picker API) become new people, in one commit.
 
 import { h, toast, modal } from '../dom.js';
-import { logContact } from '../../core/model.js';
-import { formatDayFirst } from '../../core/dates.js';
+import { logContact, createPersonText, CONTACT_TYPES } from '../../core/model.js';
+import { formatDayFirst, addDays } from '../../core/dates.js';
 import { firstName } from '../../core/text.js';
+import { FREQUENCY_PRESETS } from '../../core/settings.js';
+import { fromPickedContacts } from '../../core/phone-contacts.js';
+import { TYPE_LABEL } from '../actions.js';
+import { rhythmLabel } from './home.js';
+import { LAST_CONTACT } from './sheet.js';
 import { parseChat, chatNameOf, guessPerson } from '../../core/whatsapp.js';
 import { isZip, zipEntries, zipRead } from '../../core/zip.js';
 
@@ -114,5 +120,66 @@ export function createImports(ctx) {
     });
   }
 
-  return { handleShared, pickFile, importFile };
+  const canPickContacts = () => 'contacts' in navigator && typeof navigator.contacts?.select === 'function';
+
+  /** Pick contacts from the phone, then add them with a shared group, rhythm and last contact. */
+  async function pickContacts() {
+    let picked;
+    try { picked = await navigator.contacts.select(['name', 'tel', 'email'], { multiple: true }); } catch (e) { ctx.error(e); return; }
+    const list = fromPickedContacts(picked, ctx.store.people);
+    if (!list.length) return;
+    const fresh = list.filter(c => !c.existing);
+    const existing = list.filter(c => c.existing);
+    const chosen = new Set(fresh.map(c => c.name));
+    const groups = [...new Set(ctx.store.people.map(p => p.group).filter(Boolean))].sort();
+    const def = ctx.store.settings.defaults.frequency_days;
+    const rhythms = [...new Set([...FREQUENCY_PRESETS, def])].sort((a, b) => a - b);
+    const count = h('p.hint', { aria: { live: 'polite' } }, `${chosen.size} selected`);
+
+    return modal({
+      title: 'Add from contacts',
+      ok: 'Add',
+      body: [
+        fresh.length > 0 && h('div.pick-list', { role: 'group', aria: { label: 'People to add' } }, fresh.map(c => h('label.choice',
+          h('input', { type: 'checkbox', checked: true, onchange: e => { if (e.target.checked) chosen.add(c.name); else chosen.delete(c.name); count.textContent = `${chosen.size} selected`; } }),
+          h('span', c.name, (c.phone || c.email) && h('small', c.phone || c.email))))),
+        fresh.length > 0 && count,
+        existing.length > 0 && h('p.hint', `Already in your people: ${existing.map(c => c.name).join(', ')}.`),
+        h('label', { for: 'ci-group' }, 'Group'),
+        h('input.field#ci-group', { list: 'ci-groups', autocomplete: 'off', placeholder: 'Optional, e.g. Friends' }),
+        h('datalist#ci-groups', groups.map(g => h('option', { value: g }))),
+        h('div.two',
+          h('div', h('label', { for: 'ci-rhythm' }, 'See or talk'),
+            h('select.field#ci-rhythm', rhythms.map(f => h('option', { value: String(f), selected: f === def }, rhythmLabel(f))))),
+          h('div', h('label', { for: 'ci-type' }, 'How'),
+            h('select.field#ci-type', CONTACT_TYPES.map(t => h('option', { value: t, selected: t === 'message' }, TYPE_LABEL[t]))))),
+        h('label', { for: 'ci-when' }, 'Last in touch (roughly, for all of them)'),
+        h('select.field#ci-when', LAST_CONTACT.filter(([v]) => v !== 'exact').map(([v, l]) => h('option', { value: v }, l))),
+        h('label.check', h('input#ci-wa', { type: 'checkbox', checked: true }), 'Use their phone number for WhatsApp too'),
+        h('p.hint', 'Only names, one phone number and one email are saved. You can adjust each person afterwards.'),
+      ],
+      focus: '#ci-group',
+      onSubmit: async () => {
+        const who = fresh.filter(c => chosen.has(c.name));
+        if (!who.length) throw new Error(fresh.length ? 'Choose at least one person.' : 'Everyone you picked is already in your people.');
+        const when = document.getElementById('ci-when').value;
+        if (when === '') throw new Error('Choose when you were last in touch (a rough guess is fine).');
+        const today = ctx.today();
+        const group = document.getElementById('ci-group').value.trim();
+        const frequency = Number(document.getElementById('ci-rhythm').value);
+        const type = document.getElementById('ci-type').value;
+        const wa = document.getElementById('ci-wa').checked;
+        const contacts = [{ date: addDays(today, -Number(when)), type, note: '' }];
+        const files = who.map(c => ({
+          name: c.name,
+          text: createPersonText({ name: c.name, group, frequency_days: frequency === def ? null : frequency,
+            phone: c.phone, whatsapp: wa ? c.phone : '', email: c.email, contacts }, { today }),
+        }));
+        await ctx.store.createPeople(files, who.length === 1 ? `Add ${who[0].name}` : `Add ${who.length} people from contacts`);
+        toast(who.length === 1 ? `Added ${who[0].name}.` : `Added ${who.length} people.`);
+      },
+    });
+  }
+
+  return { handleShared, pickFile, importFile, canPickContacts, pickContacts };
 }

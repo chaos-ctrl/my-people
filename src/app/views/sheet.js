@@ -14,7 +14,7 @@ import { TYPE_LABEL } from '../actions.js';
 import { timelineChart } from './charts.js';
 
 // "When were you last in touch?" for new people. Approximate is fine.
-const LAST_CONTACT = [
+export const LAST_CONTACT = [
   ['', 'Choose…'],
   ['0', 'Today'],
   ['3', 'This week'],

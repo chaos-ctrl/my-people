@@ -19,6 +19,12 @@ for (const scheme of ['light', 'dark']) {
   page.on('pageerror', e => errors.push(e.message));
   page.on('console', m => { if (m.type() === 'error' && !m.text().includes('409')) errors.push(m.text()); });
   await page.clock.setFixedTime(new Date('2026-09-27T10:00:00+02:00'));
+  // Fake Contact Picker (Chrome on Android only).
+  await page.addInitScript(() => { navigator.contacts = { select: async () => [
+    { name: ['Aya Tanaka'], tel: ['+33 6 00 00 00 01'], email: [] },
+    { name: ['Bruno Costa'], tel: [], email: ['bruno@example.org'] },
+    { name: ['Marco'], tel: ['+33 6 00 00 00 02'], email: [] },
+  ] }; });
   const log = [];
   const gh = mockGitHub(page, { dir: DATA, log });
   const audit = async (name, { full = true } = {}) => {
@@ -131,6 +137,23 @@ for (const scheme of ['light', 'dark']) {
     await page.waitForTimeout(300);
     const f = file('marc-dupont');
     if (!/- date: 2026-09-21\n {4}type: message/.test(f) || !/- date: 2026-08-02\n {4}type: message/.test(f) || /2026-09-20\n {4}type: message/.test(f)) throw new Error(f.split('---')[1]);
+  });
+  if (scheme === 'light') await step('add people from phone contacts (one commit)', async () => {
+    await page.click('#go-settings');
+    await page.click('#device-settings button:has-text("Phone contacts")');
+    await page.waitForSelector('#modal[open]');
+    const hint = await page.textContent('#modal-body');
+    if (!hint.includes('Already in your people: Marco')) throw new Error(hint);
+    await page.fill('#ci-group', 'Work');
+    await page.selectOption('#ci-when', '60');
+    await audit('contacts-dialog', { full: false });
+    await page.click('#modal-ok');
+    await page.waitForFunction(() => !document.querySelector('#modal').open);
+    await page.waitForTimeout(300);
+    if (!log.some(l => /commit: Add 2 people from contacts \[2 files\]/.test(l))) throw new Error(log.filter(l => l.includes('commit')).join('\n'));
+    const aya = file('aya-tanaka');
+    if (!/group: Work/.test(aya) || !/whatsapp: \+33 6 00 00 00 01|whatsapp: "\+33/.test(aya) || !/date: 2026-07-29\n {4}type: message/.test(aya)) throw new Error(aya);
+    if (!/email: bruno@example.org/.test(file('bruno-costa'))) throw new Error(file('bruno-costa'));
   });
   await ctx.close();
 }

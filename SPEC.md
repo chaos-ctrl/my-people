@@ -260,6 +260,11 @@ with `DecompressionStream('deflate-raw')` when needed, and reads only message da
 offers to log the last message day or every day not yet logged, as `message` contacts, in one commit.
 *Settings → Import → WhatsApp chat…* does the same from a picked file on other devices.
 
+**Phone contacts** (Chrome on Android, Contact Picker API): *Settings → Import → Phone contacts…* opens the
+phone's picker; the chosen contacts (name, first phone, first email) are listed with checkboxes, skipping
+names already in your people, then added with one group, rhythm, last contact (approximate) and type, and
+optionally the phone number as `whatsapp`, as new files in one commit.
+
 **Insights** (`#insights`): contacts per month over 12 months, people drifting apart, rhythm check
 (suggested rhythm from real contact history) and a year in review.
 

@@ -72,3 +72,17 @@ test('reads stored and deflated ZIP entries', async () => {
   assert.equal(new TextDecoder().decode(await zipRead(zip, entries[1])), android);
   assert.throws(() => zipEntries(new Uint8Array(40)), /damaged/);
 });
+
+import { fromPickedContacts } from '../src/core/phone-contacts.js';
+test('picked phone contacts → new people, skipping the ones already there', () => {
+  const people = [{ slug: 'marc-dupont', name: 'Marc Dupont', aliases: ['Marco'] }];
+  assert.deepEqual(fromPickedContacts([
+    { name: ['  Julie  Martin '], tel: ['', '+33 6 11 22 33 44'], email: [] },
+    { name: ['Marco'], tel: [], email: ['m@example.org'] },
+    { name: ['Julie Martin'], tel: [] },
+    { name: [], tel: ['123'] },
+  ], people), [
+    { name: 'Julie Martin', phone: '+33 6 11 22 33 44', email: '', existing: null },
+    { name: 'Marco', phone: '', email: 'm@example.org', existing: 'marc-dupont' },
+  ]);
+});

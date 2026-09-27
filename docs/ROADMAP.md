@@ -58,7 +58,8 @@ Keep it short: decisions and status, not a diary.
       also Settings → Import → WhatsApp chat… for a picked file; e2e in `e2e4.mjs`): WhatsApp chat export via Android share menu (manifest `share_target` POST files → sw.js stores
       the file in a cache → redirect to `#import` → app parses zip (DecompressionStream deflate-raw) or txt,
       finds the chat name + message dates, proposes logging last message / distinct days). Delete the file after.
-- [ ] Phase 4c: import people from phone contacts (Contact Picker API; bulk dialog: group, rhythm, last
+- [x] Phase 4c (`src/core/phone-contacts.js`, `pickContacts` in imports.js, button in Settings → Import only
+      where supported; e2e with a mocked picker): import people from phone contacts (Contact Picker API; bulk dialog: group, rhythm, last
       contact approx; one commit via `store.createPeople`).
 - [ ] Phase 3: MCP connector in `connector/` (Worker entry `connector/worker.js`, `wrangler.toml` at repo root,
       reusing `src/core`). OAuth 2.1 authorization server (metadata, dynamic client registration, PKCE)

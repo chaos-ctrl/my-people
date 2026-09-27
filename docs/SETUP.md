@@ -206,6 +206,10 @@ of the messages, suggests who the chat is with, and offers to log the last day o
 The chat itself isn't kept. (On a computer: export the chat, then in the app **Settings** → **Import** →
 **WhatsApp chat…**.)
 
+**Adding people from your phone's contacts.** In the app, **Settings** → **Import** → **Phone contacts…** (Chrome
+on Android only), tick the people, then choose a group, how often you'd like to be in touch and roughly when
+you last were. Only the name, one phone number and one email are saved.
+
 ---
 
 ## 9. Try it
