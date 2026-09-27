@@ -257,6 +257,9 @@ The robots keep using the `stable` bookmark until you move it:
   topic and the "names only" default. Running your own ntfy server removes this; then set `NTFY_SERVER` (and
   `NTFY_TOKEN` if needed).
 - AI assistants with access to `my-people-data` can update people for you; `AGENTS.md` there tells them how.
+  When `data-repo-template/AGENTS.md` changes in `my-people` (new features), copy it again into
+  `my-people-data` the same way as in step 2 so assistants know the new rules. Settings need nothing:
+  missing keys in `settings.yml` use their defaults.
 
 ## Troubleshooting
 

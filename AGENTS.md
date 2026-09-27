@@ -30,6 +30,14 @@ When the user says things like "had dinner with Marc yesterday, he's starting a 
 3. Put new information under the right heading: things to follow up on → `## Ask about`,
    things they want → `## Gift ideas`, everything else → `## Notes`. Use short bullet points.
    Remove an *Ask about* item only when the user says it's been dealt with.
+   - A follow-up with a date starts with it, day-first: `- 15/11/2026: Her exam`, or `- 03/2027: Baby due`
+     for a whole month. The app then asks the user how it went around that date.
+   - Gifts: a plain line is an idea; when the user buys or gives it, prefix `[bought]` or `[given 2026]`
+     (the year it was given) instead of deleting it.
+   - A note about the contact itself ("talked about his move") goes in `## Log`, the last section, as
+     `- YYYY-MM-DD · seen|call|message · note`, newest first, same date and type as the `contacts` entry.
+   - Where they live → `city:`; phone, WhatsApp number, email → `phone:`, `whatsapp:`, `email:`.
+   - "Not now" / "don't remind me about X for a month" → `snoozed_until: YYYY-MM-DD`.
 4. Dates of birth and anniversaries: store as `MM-DD`, or `YYYY-MM-DD` if the year is known, with
    `birthday_source: manual` (for a partner or child, `birthday_source` goes inside their entry; for an
    anniversary it's `source: manual`). The user types dates day-first (DD/MM).

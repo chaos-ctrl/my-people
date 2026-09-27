@@ -45,6 +45,7 @@ my-people-data/
 │   └── julie-martin.md
 ├── settings.yml
 ├── calendar-review.yml
+├── trips.yml               # optional; written by the calendar sync and the app
 └── .github/workflows/
     ├── reminders.yml
     └── calendar-sync.yml
@@ -60,9 +61,15 @@ YAML front matter for structured fields, Markdown sections for free text.
 name: Marc Dupont
 aliases: [Marco]            # other names used in calendar events or conversation
 group: Friends              # free text; used for filtering
+city: Lyon                  # where they live; used for the city filter and trips
 frequency_days: 30          # target contact rhythm; presets 14, 30, 60, 90, 180, 365
 birthday: 03-14             # MM-DD, or YYYY-MM-DD when the year is known
 birthday_source: calendar   # calendar | manual
+whatsapp: "+33 6 12 34 56 78"   # ways to reach them: buttons that open the app and log a contact
+email: marc@example.org
+phone: "+33 1 23 45 67 89"
+links:                      # other apps: [{label, url}] or plain URLs
+  - {label: Signal, url: "https://signal.me/#p/+33612345678"}
 partner:
   name: Julie
   birthday: 07-02
@@ -77,6 +84,7 @@ children:
     birthday_source: calendar
   - name: Emma
     birthday: ""            # unknown → shows in "still to find out"
+snoozed_until: 2026-10-11   # "Not now": not suggested before this day (removed when unsnoozed)
 contacts:                   # newest first; capped at the last 100 entries
   - date: 2026-09-20
     type: seen              # seen | call | message
@@ -85,14 +93,19 @@ contacts:                   # newest first; capped at the last 100 entries
 ---
 
 ## Ask about
-- Starting the new job in October
+- 15/11/2026: His first week at the new job
 - Their house move
 
 ## Gift ideas
 - Mentioned wanting a good pour-over coffee set
+- [bought] Climbing guidebook
+- [given 2025] Scarf
 
 ## Notes
 Met through climbing. Allergic to cats.
+
+## Log
+- 2026-09-20 · seen · Dinner, talked about his move
 ```
 
 Rules:
@@ -103,6 +116,27 @@ Rules:
 - The three Markdown sections (`Ask about`, `Gift ideas`, `Notes`) are recognised by heading; any other
   content in the body is preserved verbatim.
 - Files are UTF-8 with LF line endings.
+- Keys are written in this order (unknown keys keep their place after them): `name, aliases, group, city,
+  frequency_days, birthday, birthday_source, whatsapp, email, phone, links, partner, anniversary, children,
+  snoozed_until, contacts`.
+
+**Log** (`## Log`, optional, last section): one line per contact that has a note, newest first:
+`- YYYY-MM-DD · seen|call|message · note` (the type may be left out). `contacts` stays the source of dates;
+a Log line without a matching contact is shown but doesn't count as a contact.
+
+**Dated follow-ups**: an *Ask about* line that starts with a date — `15/11/2026: …`, `15/11: …`,
+`2026-11-15: …` or `03/2027: …` (a whole month); the separator is `:` or ` - `. Around that date the person
+shows in *Ask how it went* (home, weekly review, reminders). Without a year, the nearest occurrence is meant;
+the app writes the year in when it saves the file. Lines without a date are plain reminders.
+
+**Gift status**: a *Gift ideas* line is an idea unless it starts with `[bought]` or `[given]`, optionally
+with a year or date: `[given 2025] Scarf`. Ideas and bought gifts show next to upcoming birthdays.
+
+**Snooze**: `snoozed_until` (a day, exclusive) hides the person from *Time to reach out*, the weekly review
+and reminders until that day; they stay in the list, marked "not now".
+
+**Multi-file commits**: actions touching several files (logging a group, importing people) are one commit
+through the Git Data API (trees and commits), with the same conflict handling as single-file writes.
 
 ### 2.2 `settings.yml`
 
@@ -127,6 +161,10 @@ reminders:
   lookahead_days: 7         # how far ahead to list birthdays/anniversaries
   skip_if_empty: true       # send nothing if there's nothing to say
   detail_level: names       # names | names_and_days — keep content minimal for privacy
+  rotate: true              # vary who is suggested from week to week (the most overdue always stays)
+  include_follow_ups: true  # dated "Ask about" items coming up or just past
+  include_trips: true       # upcoming trips, with who lives there
+  include_gift_ideas: false # gift ideas next to upcoming birthdays
 
 calendar_sync:
   enabled: true
@@ -137,7 +175,13 @@ calendar_sync:
                          mariage, wedding, "💍", "💒"]
   ignore_keywords: []       # events containing these are never imported
   fuzzy_max_distance: 2     # max edit distance for typo-tolerant keyword matching (words ≥ 6 letters)
+  trips: true               # spot upcoming trips to cities where your people live
+
+places:
+  home_city: ""             # where you live; events there aren't treated as trips
 ```
+
+Missing keys use these defaults, so older `settings.yml` files keep working.
 
 Note: "anniversaire"/"anniv" alone means birthday in French; "anniversaire de mariage" means wedding
 anniversary, and English "anniversary" means wedding anniversary. Anniversary keywords are checked first
@@ -162,6 +206,23 @@ dismissed:                  # uids the user dismissed or already handled; never 
 
 An empty file is `pending: []` and `dismissed: []`. (A bare list at the top level is read as `pending`.)
 
+### 2.4 `trips.yml`
+
+Trips to cities where people live. Only city names and dates are kept.
+
+```yaml
+trips:
+  - city: Lyon
+    from: 2026-10-03
+    to: 2026-10-05          # optional, defaults to `from`
+    source: calendar        # calendar | manual
+    uid: "abc@google.com"   # calendar event id, for calendar trips
+```
+
+The app shows upcoming trips in *Coming up* with who lives there (matching `city`, case- and
+accent-insensitive); reminders include them when `reminders.include_trips` is on. The calendar sync
+adds and updates `source: calendar` trips and never touches manual ones.
+
 ## 3. Web app (`my-people`)
 
 ### 3.1 Screens
@@ -181,6 +242,18 @@ An empty file is `pending: []` and `dismissed: []`. (A bare list at the top leve
    meta line (group · rhythm · last contact), a thin progress bar along the bottom that fills and reddens
    as the person becomes more overdue, and a **Log contact** button.
 6. **Still to find out**: a quiet line listing children/partners with no birthday on file.
+
+Also on home: *Ask how it went* (dated follow-ups from the last 30 days, with *Done* to remove the line),
+trips in *Coming up*, a city filter, *Not now* on reach-out cards (snooze 2 weeks), contact buttons
+(WhatsApp, email, phone, links) that open the app and log a contact, and *Log a group* (several people,
+one type, date and optional note, one commit). After logging, the toast offers *Add note* (writes the
+`## Log` line) and *Undo*. `#person/<slug>` opens someone's sheet directly (used by notification buttons).
+
+**Weekly review** (`#weekly`): one card at a time — follow-ups, birthdays and anniversaries this week,
+then up to five people to reach out to — each with contact buttons, log buttons, *Not now* and *Skip*.
+
+**Insights** (`#insights`): contacts per month over 12 months, people drifting apart, rhythm check
+(suggested rhythm from real contact history) and a year in review.
 
 **Log contact** (two taps): tap *Log contact* → the button turns into three chips *Seen / Call / Message*
 → tap one → today's date is logged, colour resets. Undo toast for 5 seconds.
@@ -279,8 +352,10 @@ bookmark the user moves forward with a pull request from `main`) and run them.
 - The script reads `settings.yml`; exits immediately unless the current local time (in `timezone`) matches
   a configured day and the configured hour. This makes the time configurable from the app without editing
   cron. Runs are ~10 seconds; hourly runs fit well within the free Actions quota.
-- Builds one message: the top `people_count` overdue people, plus birthdays/anniversaries within
-  `lookahead_days`. Respects `detail_level` and `skip_if_empty`.
+- Builds one message: `people_count` overdue people (not snoozed; the most overdue always, the rest rotating
+  week by week when `rotate` is on), birthdays/anniversaries within `lookahead_days` (with open gift ideas
+  if `include_gift_ideas`), dated follow-ups and trips. Respects `detail_level` and `skip_if_empty`.
+  The notification has one button per suggested person, opening `#person/<slug>` in the app.
 - Sends via **ntfy**: `POST {NTFY_SERVER}/{NTFY_TOPIC}` with a title ("My people") and a click action
   opening the app URL. If `email` is in `channels`, adds the `Email: {NTFY_EMAIL}` header so ntfy forwards
   it by email.

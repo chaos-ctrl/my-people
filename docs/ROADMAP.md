@@ -48,8 +48,8 @@ Keep it short: decisions and status, not a diary.
 ### Next (in order)
 - [x] Browser-check the new screens: `tests/e2e/e2e4.mjs` (fixture `nina-rossi.md`, `trips.yml`); axe 0 at
       360px light/dark. Fixed: follow-up rows were unstyled buttons (dark-mode contrast).
-- [ ] Docs for Phase 1–2: SPEC.md (fields, Log section, follow-ups, gifts, snooze, trips.yml, new settings,
-      multi-file commits), both AGENTS.md copies (how an AI adds notes/follow-ups/gifts/city), SETUP.md if needed.
+- [x] Docs for Phase 1–2: SPEC.md (2.1 fields/Log/follow-ups/gifts/snooze/multi-file commits, 2.2 settings,
+      2.4 trips.yml, 3.1 screens, 4.1 digest), both AGENTS.md copies, SETUP.md (re-copy AGENTS.md note).
 - [ ] Phase 4a: calendar sync detects trips (upcoming, non-recurring events whose summary/location mention a
       city where someone lives; skip `places.home_city`; `calendar_sync.trips` setting) → `writeCalendarTrips`.
       Tests with sample ICS. Workflow already commits `git add -A`.
@@ -72,5 +72,7 @@ Keep it short: decisions and status, not a diary.
 1. Merge `claude/eloquent-davinci-hks9r0` into `main` (a PR can be opened for them on request).
 2. Follow docs/SETUP.md steps 1–9 (Pages, `stable` branch, data repo + template files, token, app, ntfy,
    secrets, calendar address, home screen, test).
-3. After new template files change (settings.yml gained keys; trips come later): nothing required —
+3. Copy the updated `data-repo-template/AGENTS.md` into `my-people-data` (new rules for notes, follow-ups,
+   gifts, city, trips).
+4. After new template files change (settings.yml gained keys; trips come later): nothing required —
    missing settings use defaults.
