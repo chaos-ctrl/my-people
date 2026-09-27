@@ -10,6 +10,7 @@ TOOLS=/tmp/tools node tests/e2e/e2e.mjs              # setup, logging, undo, con
 TOOLS=/tmp/tools node tests/e2e/e2e2.mjs             # storage modes, auto-lock, attach/create from calendar, filters
 TOOLS=/tmp/tools node tests/e2e/e2e3.mjs             # passkey (virtual authenticator) — needs http://localhost
 TOOLS=/tmp/tools SHOTS=/tmp node tests/e2e/a11y.mjs  # axe accessibility checks + screenshots
+TOOLS=/tmp/tools SHOTS=/tmp node tests/e2e/e2e4.mjs  # weekly, insights, group log, notes, gifts, snooze, deep link; axe at 360px light/dark
 ```
 
 Chromium is expected at `/opt/pw-browsers/chromium` (Claude Code cloud containers); change `executablePath` elsewhere.

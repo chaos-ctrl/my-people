@@ -46,8 +46,8 @@ Keep it short: decisions and status, not a diary.
   drifting apart, rhythm check, year in review), contact timeline chart in the person sheet.
 
 ### Next (in order)
-- [ ] Browser-check the new screens (weekly review, insights, group log, note dialog, gift rows, snooze,
-      `#person/<slug>` deep link); screenshots at 360px light/dark; axe = 0 violations. Fix what's found.
+- [x] Browser-check the new screens: `tests/e2e/e2e4.mjs` (fixture `nina-rossi.md`, `trips.yml`); axe 0 at
+      360px light/dark. Fixed: follow-up rows were unstyled buttons (dark-mode contrast).
 - [ ] Docs for Phase 1–2: SPEC.md (fields, Log section, follow-ups, gifts, snooze, trips.yml, new settings,
       multi-file commits), both AGENTS.md copies (how an AI adds notes/follow-ups/gifts/city), SETUP.md if needed.
 - [ ] Phase 4a: calendar sync detects trips (upcoming, non-recurring events whose summary/location mention a

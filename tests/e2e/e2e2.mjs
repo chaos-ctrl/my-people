@@ -91,7 +91,7 @@ await step('search and group filter', async () => {
   await page.fill('#search', '');
   await page.click('#groups button:has-text("Friends")');
   const n2 = await page.$$eval('#list .row:not(.broken) .name', e => e.map(x => x.textContent));
-  if (n2.join() !== 'Marc Dupont') throw new Error(n2.join());
+  if (n2.join() !== 'Nina Rossi,Marc Dupont' && n2.join() !== 'Marc Dupont,Nina Rossi') throw new Error(n2.join());
   await ctx.close();
 });
 console.log('page errors:', errors.length ? errors : 'none');

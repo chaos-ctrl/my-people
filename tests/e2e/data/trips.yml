@@ -1,0 +1,2 @@
+trips:
+  - {city: Lyon, from: 2026-10-10, to: 2026-10-12, source: manual}

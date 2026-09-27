@@ -204,7 +204,9 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 .bday .main { min-width: 0; }
 .tag { display: inline-block; font-size: .75rem; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; color: var(--muted); margin-right: 6px; }
 .followup { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 6px; }
-.followup .main { min-width: 0; overflow-wrap: anywhere; }
+.followup .main { all: unset; cursor: pointer; min-width: 0; overflow-wrap: anywhere; border-radius: 6px; }
+.followup .main:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.followup .extra { display: block; color: var(--muted); font-size: .86rem; }
 .sheet-actions { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 8px; }
 .notice { background: var(--field); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: .92rem; margin: 8px 0; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 .gift { display: grid; grid-template-columns: 1fr 120px 44px; gap: 6px; margin-bottom: 6px; }
