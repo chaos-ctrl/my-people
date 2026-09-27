@@ -1,7 +1,7 @@
 // Home: reach out, ask how it went, coming up, check these, everyone, still to find out.
 
 import { $, h, fill } from '../dom.js';
-import { sortByStatus, needingAttention, upcomingDates, missingBirthdays, searchText, isSnoozed, removeAskItem } from '../../core/model.js';
+import { sortByStatus, personStatus, needingAttention, upcomingDates, missingBirthdays, searchText, isSnoozed, removeAskItem } from '../../core/model.js';
 import { formatAgo, formatUpcoming, formatDayFirst, parseYearly, formatShortDate } from '../../core/dates.js';
 import { followUps, formatFollowUpDate } from '../../core/followups.js';
 import { openGifts } from '../../core/gifts.js';
@@ -13,19 +13,26 @@ import { TYPE_LABEL } from '../actions.js';
 const RHYTHM = { 14: 'every 2 weeks', 30: 'monthly', 60: 'every 2 months', 90: 'every 3 months', 180: 'every 6 months', 365: 'yearly' };
 export const rhythmLabel = f => RHYTHM[f] || `every ${f} days`;
 
+const searchCache = new WeakMap(); // person → normalised text (people objects are reused while unchanged)
+const searchable = p => { let t = searchCache.get(p); if (t === undefined) { t = searchText(p); searchCache.set(p, t); } return t; };
+
 export function createHome(ctx) {
   const ui = { query: '', group: null, city: null, chooser: null };
 
-  $('#search').addEventListener('input', e => { ui.query = e.target.value; renderList(); });
+  let searchTimer = null;
+  $('#search').addEventListener('input', e => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => { ui.query = e.target.value; renderList(); }, 120);
+  });
   $('#add-person').addEventListener('click', () => ctx.openSheet(null));
   $('#log-group').addEventListener('click', () => ctx.actions.groupDialog());
   // Tapping anywhere else closes an open Seen/Call/Message chooser.
   document.addEventListener('click', e => {
-    if (ui.chooser && !e.target.closest('.chooser') && !e.target.closest('.log')) { ui.chooser = null; renderList(); }
+    if (ui.chooser && !e.target.closest('.chooser') && !e.target.closest('.log')) setChooser(null);
   });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && ui.chooser) {
-      const slug = ui.chooser; ui.chooser = null; renderList();
+      const slug = ui.chooser; setChooser(null);
       document.querySelector(`[data-log="${CSS.escape(slug)}"]`)?.focus();
     }
   });
@@ -35,8 +42,7 @@ export function createHome(ctx) {
 
   function quickLog(p, type) {
     ui.chooser = null;
-    ctx.actions.log(p, type);
-    renderList();
+    ctx.actions.log(p, type); // the store's change event redraws the list
     document.querySelector(`[data-log="${CSS.escape(p.slug)}"]`)?.focus();
   }
 
@@ -155,6 +161,43 @@ export function createHome(ctx) {
     chipRow($('#cities'), cities.length > 1 ? cities : [], 'city', 'All cities');
   }
 
+  /** One row of "Everyone". */
+  function rowEl(p, st, today = ctx.today()) {
+    const settings = ctx.store.settings;
+    const snoozed = isSnoozed(p, today);
+    const meta = [p.group, p.city, rhythmLabel(st.frequency), st.days === null ? 'never logged' : formatAgo(st.days),
+      snoozed && `not now until ${formatShortDate(p.snoozed_until)}`].filter(Boolean).join(' · ');
+    const width = `${Math.min(st.sortRatio / (settings.status.long_overdue || 1.5), 1) * 100}%`;
+    const reach = contactActions(p)[0];
+    const right = ui.chooser === p.slug
+      ? h('span.chooser', { role: 'group', aria: { label: `How were you in touch with ${p.name}?` } },
+        Object.entries(TYPE_LABEL).map(([type, label], i) => h('button', {
+          type: 'button', onclick: () => quickLog(p, type), dataset: i === 0 ? { first: '1' } : {},
+        }, label)),
+        reach && h('button.reach', { type: 'button', onclick: () => { ui.chooser = null; ctx.actions.reachOut(p, reach); } }, reach.label))
+      : h('button.log', {
+        type: 'button', dataset: { log: p.slug }, aria: { label: `Log contact with ${p.name}` },
+        onclick: () => { setChooser(p.slug); document.querySelector('.chooser [data-first]')?.focus(); },
+      }, 'Log contact');
+    return h('div.row', { class: `row ${statusClass(st)}${snoozed ? ' snoozed' : ''}`, dataset: { slug: p.slug } },
+      h('button.open', { type: 'button', onclick: () => ctx.openSheet(p.slug) },
+        h('span.dot', { aria: { hidden: 'true' } }, initials(p.name)),
+        h('span.text', h('span.name', p.name), h('span.meta', meta))),
+      right,
+      h('span.bar', { aria: { hidden: 'true' }, style: { '--w': width } }));
+  }
+
+  /** Open or close the Seen/Call/Message chooser, redrawing only the rows concerned. */
+  function setChooser(slug) {
+    const before = ui.chooser;
+    ui.chooser = slug;
+    for (const s of new Set([before, slug].filter(Boolean))) {
+      const el = document.querySelector(`#list .row[data-slug="${CSS.escape(s)}"]`);
+      const p = ctx.store.person(s);
+      if (el && p && !p.error) el.replaceWith(rowEl(p, personStatus(p, ctx.store.settings, ctx.today())));
+    }
+  }
+
   function renderList() {
     const { store } = ctx;
     const settings = store.settings;
@@ -163,31 +206,9 @@ export function createHome(ctx) {
     const ok = store.people.filter(p => !p.error);
     const broken = store.people.filter(p => p.error);
     const rows = sortByStatus(ok, settings, today)
-      .filter(({ person: p }) => (!ui.group || p.group === ui.group) && (!ui.city || p.city === ui.city) && (!q || searchText(p).includes(q)));
+      .filter(({ person: p }) => (!ui.group || p.group === ui.group) && (!ui.city || p.city === ui.city) && (!q || searchable(p).includes(q)));
 
-    const els = rows.map(({ person: p, status: st }) => {
-      const snoozed = isSnoozed(p, today);
-      const meta = [p.group, p.city, rhythmLabel(st.frequency), st.days === null ? 'never logged' : formatAgo(st.days),
-        snoozed && `not now until ${formatShortDate(p.snoozed_until)}`].filter(Boolean).join(' · ');
-      const width = `${Math.min(st.sortRatio / (settings.status.long_overdue || 1.5), 1) * 100}%`;
-      const reach = contactActions(p)[0];
-      const right = ui.chooser === p.slug
-        ? h('span.chooser', { role: 'group', aria: { label: `How were you in touch with ${p.name}?` } },
-          Object.entries(TYPE_LABEL).map(([type, label], i) => h('button', {
-            type: 'button', onclick: () => quickLog(p, type), dataset: i === 0 ? { first: '1' } : {},
-          }, label)),
-          reach && h('button.reach', { type: 'button', onclick: () => { ui.chooser = null; ctx.actions.reachOut(p, reach); renderList(); } }, reach.label))
-        : h('button.log', {
-          type: 'button', dataset: { log: p.slug }, aria: { label: `Log contact with ${p.name}` },
-          onclick: () => { ui.chooser = p.slug; renderList(); document.querySelector('.chooser [data-first]')?.focus(); },
-        }, 'Log contact');
-      return h('div.row', { class: `row ${statusClass(st)}${snoozed ? ' snoozed' : ''}` },
-        h('button.open', { type: 'button', onclick: () => ctx.openSheet(p.slug) },
-          h('span.dot', { aria: { hidden: 'true' } }, initials(p.name)),
-          h('span.text', h('span.name', p.name), h('span.meta', meta))),
-        right,
-        h('span.bar', { aria: { hidden: 'true' }, style: { '--w': width } }));
-    });
+    const els = rows.map(({ person: p, status: st }) => rowEl(p, st, today));
 
     const brokenEls = broken.filter(p => !q || normalise(p.slug).includes(q)).map(p => h('div.row.broken.st-none',
       h('button.open', { type: 'button', onclick: () => ctx.showBroken(p) },

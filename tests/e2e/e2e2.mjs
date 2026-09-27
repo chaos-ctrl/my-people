@@ -86,9 +86,11 @@ await step('create person from calendar event', async () => {
 await step('search and group filter', async () => {
   const { page, ctx } = await start('plain');
   await page.fill('#search', 'marathon');
+  await page.waitForFunction(() => document.querySelectorAll('#list .row').length === 1); // search is debounced
   const names = await page.$$eval('#list .name', e => e.map(x => x.textContent));
   if (names.join() !== 'Sophie Bernard') throw new Error(names.join());
   await page.fill('#search', '');
+  await page.waitForFunction(() => document.querySelectorAll('#list .row').length > 1);
   await page.click('#groups button:has-text("Friends")');
   const n2 = await page.$$eval('#list .row:not(.broken) .name', e => e.map(x => x.textContent));
   if (n2.join() !== 'Nina Rossi,Marc Dupont' && n2.join() !== 'Marc Dupont,Nina Rossi') throw new Error(n2.join());

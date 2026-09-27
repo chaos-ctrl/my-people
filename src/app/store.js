@@ -71,6 +71,7 @@ export class Store extends EventTarget {
     this.local.clear();
     this.pending.clear();
     this.parsed = null;
+    this.sig = null;
     this.people = [];
     this.review = { pending: [], dismissed: [] };
     this.gh = null;
@@ -102,7 +103,11 @@ export class Store extends EventTarget {
     catch (e) { this.settings = resolveSettings({}); this.settingsError = e.message; }
     this.review = readReview(this.text('calendar-review.yml') ?? '');
     this.trips = readTrips(this.text('trips.yml') ?? '');
-    this.changed();
+    // GitHub confirming what's already on screen changes nothing: don't redraw.
+    const sig = [this.text('settings.yml'), this.text('calendar-review.yml'), this.text('trips.yml'), ...this.people];
+    const same = this.sig?.length === sig.length && sig.every((x, i) => x === this.sig[i]);
+    this.sig = sig;
+    if (!same) this.changed();
   }
 
   person(slug) { return this.people.find(p => p.slug === slug); }

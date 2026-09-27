@@ -2,7 +2,7 @@
 // It never touches GitHub API requests, so your people are never cached.
 // Bump VERSION when the list of files changes.
 
-const VERSION = 'my-people-v5';
+const VERSION = 'my-people-v6';
 const SHARE = 'my-people-share'; // a file shared from another app (WhatsApp export), until the app reads it
 const SHELL = [
   './',
