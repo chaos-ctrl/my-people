@@ -3,7 +3,7 @@
 // Phone contacts (Contact Picker API) become new people, in one commit.
 
 import { h, toast, modal } from '../dom.js';
-import { logContact, createPersonText, CONTACT_TYPES } from '../../core/model.js';
+import { logContact, createPersonText, CONTACT_TYPES, CONTACTS_CAP } from '../../core/model.js';
 import { formatDayFirst, addDays } from '../../core/dates.js';
 import { firstName } from '../../core/text.js';
 import { FREQUENCY_PRESETS } from '../../core/settings.js';
@@ -15,7 +15,6 @@ import { parseChat, chatNameOf, guessPerson } from '../../core/whatsapp.js';
 import { isZip, zipEntries, zipRead } from '../../core/zip.js';
 
 const SHARE = 'my-people-share'; // same name as in sw.js
-const MAX_DAYS = 100;
 
 /** Files the service worker kept from a share, deleted as soon as they're read. */
 async function takeShared() {
@@ -85,7 +84,10 @@ export function createImports(ctx) {
     const newDays = () => {
       const p = ctx.store.person(select.value);
       const logged = new Set((p?.contacts ?? []).map(c => c.date));
-      return parsed.days.filter(d => !logged.has(d)).slice(0, MAX_DAYS);
+      // Contacts are capped (newest kept), so a bulk import only fills the free room: it never pushes out
+      // contacts already there. Logging just the last day always works, like any quick log.
+      const room = Math.max(1, CONTACTS_CAP - (p?.contacts.length ?? 0));
+      return parsed.days.filter(d => !logged.has(d)).slice(0, room);
     };
     function update() {
       const p = ctx.store.person(select.value);

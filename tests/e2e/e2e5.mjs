@@ -43,11 +43,14 @@ await step('opens offline from the copy, read-only', async () => {
 });
 
 await step('quick log offline is kept and survives a reload', async () => {
+  const savedAt = () => page.evaluate(() => JSON.parse(localStorage.getItem('mp.offline')).savedAt);
+  const before = await savedAt();
   await page.click('#list .row:has-text("Sophie Bernard") .log');
   await page.click('#list .row:has-text("Sophie Bernard") .chooser button:has-text("Call")');
   await page.waitForFunction(() => document.querySelector('#toast')?.textContent.includes('Saved on this device'));
   if (!(await banner()).includes('1 contact waiting')) throw new Error(await banner());
   await page.waitForTimeout(1500);
+  if (await savedAt() !== before) throw new Error('saving offline changed the date of the copy');
   await page.reload(); await unlock();
   if (!(await banner()).includes('1 contact waiting')) throw new Error('queue lost: ' + await banner());
   const meta = await page.textContent('#list .row:has-text("Sophie Bernard")');

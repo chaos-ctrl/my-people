@@ -36,7 +36,8 @@ export function writeCalendarTrips(text, calendarTrips) {
   let raw;
   try { raw = parseYaml(base); } catch { raw = null; }
   const obj = isPlainObject(raw) ? raw : {};
-  const manual = (Array.isArray(obj.trips) ? obj.trips : []).filter(t => !(isPlainObject(t) && t.source === 'calendar'));
+  const list = Array.isArray(raw) ? raw : Array.isArray(obj.trips) ? obj.trips : []; // a bare list is read as trips too
+  const manual = list.filter(t => !(isPlainObject(t) && t.source === 'calendar'));
   const trips = [...manual, ...calendarTrips.map(t => ({ city: t.city, from: t.from, to: t.to, source: 'calendar', ...(t.uid ? { uid: t.uid } : {}) }))]
     .sort((a, b) => String(a.from).localeCompare(String(b.from)));
   return patchYaml(isPlainObject(raw) ? base : TRIPS_TEMPLATE, { ...obj, trips });

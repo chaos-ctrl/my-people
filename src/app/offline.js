@@ -23,14 +23,17 @@ export function dropSnapshot() {
   try { localStorage.removeItem(KEY); } catch { /* nothing stored */ }
 }
 
-/** Save files (Map path → {sha, text}) and queued logs. Returns false if the browser refused (full, private mode). */
-export async function saveSnapshot(token, repo, files, queue = []) {
+/**
+ * Save files (Map path → {sha, text}) and queued logs. `savedAt`: when the files were last fetched from GitHub
+ * (default now). Returns false if the browser refused (full, private mode).
+ */
+export async function saveSnapshot(token, repo, files, queue = [], savedAt = null) {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const body = enc.encode(JSON.stringify({ files: [...files], queue }));
   const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await dataKey(token, salt), body);
   try {
-    localStorage.setItem(KEY, JSON.stringify({ v: 1, repo, savedAt: new Date().toISOString(), salt: b64(salt), iv: b64(iv), ct: b64(ct) }));
+    localStorage.setItem(KEY, JSON.stringify({ v: 1, repo, savedAt: savedAt ?? new Date().toISOString(), salt: b64(salt), iv: b64(iv), ct: b64(ct) }));
     return true;
   } catch { return false; }
 }

@@ -22,7 +22,12 @@ export function createActions(ctx) {
   async function log(p, type, { date = ctx.today(), note = '' } = {}) {
     const entry = { date, type, note };
     const who = p.name;
-    const keep = () => { ctx.queueLog(p, entry); toast(`Saved on this device: ${VERB[type]} with ${firstName(who)}. It’ll be sent when you’re back online.`); };
+    const keep = () => {
+      const stored = ctx.queueLog(p, entry);
+      toast(stored
+        ? `Saved on this device: ${VERB[type]} with ${firstName(who)}. It’ll be sent when you’re back online.`
+        : `No connection: ${VERB[type]} with ${firstName(who)} will be sent when you’re back online. Keep the app open until then.`, { ms: 9000 });
+    };
     if (ctx.offline()) { keep(); return; }
     const pending = ctx.store.updatePerson(p.slug, t => logContact(t, entry), `Log ${VERB[type]} with ${who}`);
     const actions = [{ label: 'Undo', onClick: () => undo(p, entry) }];

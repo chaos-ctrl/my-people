@@ -130,6 +130,7 @@ async function unlocked(token, gh = null) {
   app.queue = saved?.queue ?? []; // kept in every save until sent
   try {
     await app.store.load();
+    app.loadedAt = new Date().toISOString();
   } catch (e) {
     if (saved && e instanceof GitHubError && e.status === 0) {
       goOffline(saved);
@@ -163,7 +164,9 @@ function saveOfflineSoon() {
   clearTimeout(saveTimer);
   const { token, store } = app;
   saveTimer = setTimeout(() => {
-    if (app.store === store) saveSnapshot(token, app.device.repo, store.files, app.queue).catch(() => {});
+    // Offline, the files are as old as the copy (or the last load): keep that date rather than "now".
+    const savedAt = app.offline ? app.offline.savedAt ?? app.loadedAt : null;
+    if (app.store === store) saveSnapshot(token, app.device.repo, store.files, app.queue, savedAt).catch(() => {});
   }, 1000);
 }
 
@@ -193,7 +196,7 @@ function applyQueued(q) {
   if (p) app.store.applyLocal(p.path, logContact(app.store.text(p.path), q));
 }
 
-/** Keep a contact on this device until GitHub can be reached. */
+/** Keep a contact until GitHub can be reached. Returns true if it's stored on the device (offline copy on). */
 function queueLog(p, entry) {
   const q = { slug: p.slug, date: entry.date, type: entry.type, note: entry.note ?? '' };
   app.queue.push(q);
@@ -201,6 +204,7 @@ function queueLog(p, entry) {
   applyQueued(q);
   saveOfflineSoon();
   renderBanners();
+  return !!app.device.offline && ctx.offlineAllowed();
 }
 
 /** Send contacts logged offline, in one commit (a contact already there isn't added twice). */
@@ -213,7 +217,7 @@ async function sendQueue(queue) {
       mutate: t => list.reduce((text, q) => (readPerson(slug, text).contacts.some(c => c.date === q.date && c.type === q.type) ? text : logContact(text, q)), t),
     })), `Log ${queue.length} contact${queue.length === 1 ? '' : 's'} made offline`);
   }
-  app.queue = [];
+  app.queue = app.queue.filter(q => !queue.includes(q)); // keep anything logged while this was being sent
   saveOfflineSoon();
   toast(`Sent ${queue.length} contact${queue.length === 1 ? '' : 's'} logged offline.`);
 }
@@ -226,6 +230,7 @@ async function reconnect() {
   try {
     app.store.readOnly = null;
     await app.store.load(); // replaces the offline copy only once GitHub answered
+    app.loadedAt = new Date().toISOString();
     loaded = true;
     if (queue.length) await sendQueue(queue);
     app.offline = null;

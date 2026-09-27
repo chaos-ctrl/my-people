@@ -53,6 +53,12 @@ test('writeCalendarTrips keeps manual trips and is stable', () => {
   assert.deepEqual(readTrips(writeCalendarTrips(once, [])).map(t => t.city), ['Nantes']);
 });
 
+test('writeCalendarTrips keeps manual trips from a bare-list file', () => {
+  const bare = '- {city: Nantes, from: 2026-12-01}\n- {city: Lyon, from: 2026-01-01, source: calendar, uid: old}\n';
+  const out = writeCalendarTrips(bare, [{ city: 'Lyon', from: '2026-10-10', to: '2026-10-12', uid: 'new' }]);
+  assert.deepEqual(readTrips(out).map(t => `${t.city} ${t.source} ${t.uid ?? ''}`.trim()), ['Lyon calendar new', 'Nantes manual']);
+});
+
 function dataDir({ trips = true, tripsFile } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'mp-trips-'));
   mkdirSync(join(dir, 'people'));
