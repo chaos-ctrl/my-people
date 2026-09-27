@@ -50,7 +50,8 @@ Keep it short: decisions and status, not a diary.
       360px light/dark. Fixed: follow-up rows were unstyled buttons (dark-mode contrast).
 - [x] Docs for Phase 1–2: SPEC.md (2.1 fields/Log/follow-ups/gifts/snooze/multi-file commits, 2.2 settings,
       2.4 trips.yml, 3.1 screens, 4.1 digest), both AGENTS.md copies, SETUP.md (re-copy AGENTS.md note).
-- [ ] Phase 4a: calendar sync detects trips (upcoming, non-recurring events whose summary/location mention a
+- [x] Phase 4a: calendar sync detects trips (`detectTrips` in `src/core/trips.js`, ICS now has `location`/`end`,
+      tests in `tests/trips.test.js`, SPEC 4.2, SETUP step 7). Original plan: (upcoming, non-recurring events whose summary/location mention a
       city where someone lives; skip `places.home_city`; `calendar_sync.trips` setting) → `writeCalendarTrips`.
       Tests with sample ICS. Workflow already commits `git add -A`.
 - [ ] Phase 4b: WhatsApp chat export via Android share menu (manifest `share_target` POST files → sw.js stores

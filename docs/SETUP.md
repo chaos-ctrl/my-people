@@ -187,6 +187,11 @@ address, confirm, then copy the new address and update the `CALENDAR_ICS_URL` se
 Good to know: Google's automatic "Birthdays" calendar (from Google Contacts) is a separate calendar and isn't
 included. Birthdays you created yourself as yearly events ("Marc 🎂", "Anniversaire Julie") are.
 
+**Trips.** The robot also spots upcoming one-off events (flights, hotel stays, weekends away) whose place or title
+names a city where one of your people lives (their **City** field), and shows "Lyon: Nina lives there" under
+**Coming up**. Only the city and dates are saved, in `trips.yml`. In the app, open **Settings** → **Calendar sync**
+and type your own **home city** so events there aren't taken for trips; untick **Spot trips** to turn it off.
+
 ---
 
 ## 8. Add the app to your home screen
@@ -213,7 +218,7 @@ the red message. It usually names the missing secret.
 2. In the left list, click **Calendar sync**.
 3. Click **Run workflow** (on the right) → **Run workflow**.
 4. After about 30 seconds, refresh. A green tick means it worked. Open the run to see the summary, e.g.
-   `Calendar sync: 3 updated, 2 to review`.
+   `Calendar sync: 3 updated, 2 to review` (plus `, 1 trip` when trips changed).
 5. Reopen the app. Birthdays appear under **Coming up**, and anything unclear appears under **Check these**,
    where you can attach it to someone, create a new person, or dismiss it.
 

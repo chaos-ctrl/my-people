@@ -8,7 +8,7 @@
 //       uid: "abc@google.com" # calendar event id, for calendar trips
 
 import { parseYaml, patchYaml } from './yaml-edit.js';
-import { isIsoDay, daysBetween, formatShortDate } from './dates.js';
+import { isIsoDay, daysBetween, addDays, formatShortDate } from './dates.js';
 import { isPlainObject, normalise } from './text.js';
 
 export const TRIPS_TEMPLATE = `# Trips found in your calendar by the daily sync (source: calendar), and any you add by hand
@@ -40,6 +40,42 @@ export function writeCalendarTrips(text, calendarTrips) {
   const trips = [...manual, ...calendarTrips.map(t => ({ city: t.city, from: t.from, to: t.to, source: 'calendar', ...(t.uid ? { uid: t.uid } : {}) }))]
     .sort((a, b) => String(a.from).localeCompare(String(b.from)));
   return patchYaml(isPlainObject(raw) ? base : TRIPS_TEMPLATE, { ...obj, trips });
+}
+
+const words = s => ` ${normalise(s).replace(/[^a-z0-9]+/g, ' ').trim()} `;
+const mentions = (text, city) => { const c = words(city); return c.trim() !== '' && text.includes(c); };
+
+/**
+ * Trips found in calendar events: one-off events (not recurring, not cancelled) that end from 30 days ago
+ * to a year ahead and whose location (or else summary) names a city where someone lives. Events that also
+ * name `places.home_city` are skipped ("Gare de Lyon, Paris" is not a trip to Lyon for someone in Paris),
+ * and so are events longer than 60 days. Returns [{city, from, to, uid}], one per event.
+ * `events`: [{uid, summary, location, date, end, rrule, recurrenceId, status}].
+ */
+export function detectTrips(events, people, settings, today) {
+  const home = settings?.places?.home_city ?? '';
+  const cities = [];
+  for (const p of people) {
+    if (p.error || !p.city || (home && sameCity(p.city, home))) continue;
+    if (!cities.some(c => sameCity(c, p.city))) cities.push(p.city);
+  }
+  cities.sort((a, b) => words(b).length - words(a).length); // "Saint-Denis" before "Denis"
+  if (!cities.length) return [];
+  const from = addDays(today, -30), until = addDays(today, 365);
+  const out = [];
+  const seen = new Set();
+  for (const ev of events) {
+    if (!ev.uid || !isIsoDay(String(ev.date)) || ev.rrule || ev.recurrenceId || ev.status === 'CANCELLED') continue;
+    const end = isIsoDay(String(ev.end)) ? ev.end : ev.date;
+    if (end < from || ev.date > until || daysBetween(ev.date, end) > 60 || seen.has(ev.uid)) continue;
+    const loc = words(ev.location ?? ''), sum = words(ev.summary ?? '');
+    if (home && (mentions(loc, home) || mentions(sum, home))) continue;
+    const city = cities.find(c => mentions(loc, c)) ?? cities.find(c => mentions(sum, c));
+    if (!city) continue;
+    seen.add(ev.uid);
+    out.push({ city, from: ev.date, to: end, uid: ev.uid });
+  }
+  return out.sort((a, b) => a.from.localeCompare(b.from) || a.city.localeCompare(b.city));
 }
 
 export const sameCity = (a, b) => normalise(a).replace(/[^a-z0-9]+/g, ' ').trim() === normalise(b).replace(/[^a-z0-9]+/g, ' ').trim();

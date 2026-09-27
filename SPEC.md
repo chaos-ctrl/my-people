@@ -395,6 +395,12 @@ bookmark the user moves forward with a pull request from `main`) and run them.
 - Commit once per run with a summary message (`Calendar sync: 3 updated, 2 to review`), only if
   something changed.
 - Calendar-derived birthdays appear in the app and reminders like any other.
+- **Trips** (when `calendar_sync.trips` is on): one-off events (no `RRULE`, not cancelled, at most 60 days
+  long, ending from 30 days ago to a year ahead) whose `LOCATION`, or else `SUMMARY`, names a city in some
+  person's `city` (whole words, case- and accent-insensitive, longest city name first). Events that also name
+  `places.home_city` are skipped. Calendar trips in `trips.yml` are replaced by the current set on each run;
+  manual trips are kept; the file isn't created when there's nothing to write. The commit message then ends
+  with `, N trips`.
 
 ## 5. AI-agnostic operation
 
