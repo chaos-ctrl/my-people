@@ -10,6 +10,7 @@ This guide takes you from nothing to a working app on your phone, one click at a
   Only you (and whoever you give a token to) can see it.
 - **A weekly reminder** on your phone through the free **ntfy** app, sent by GitHub even when the app is closed.
 - **Birthdays from Google Calendar**, copied into your people once a day (read-only; nothing is ever written to Google).
+- Optionally, **your AI assistant** (Claude, ChatGPT…) connected to your people (step 10).
 
 > **Before you start:** the app's code must be on the `main` branch of `chaos-ctrl/my-people`. If it is
 > still in a pull request, open the pull request on GitHub and click **Merge pull request**, then **Confirm merge**.
@@ -242,6 +243,70 @@ scheduled run).
 
 ---
 
+## 10. Optional: connect an AI assistant (Claude, ChatGPT…)
+
+This lets you say "had dinner with Marc yesterday, he's starting a new job" to your assistant, on your phone
+or computer, and have it logged. It's a small free program (a "connector") on **Cloudflare**, which signs you in
+with GitHub. Only your GitHub account is let in, and it can only reach `my-people-data`. It can read, log and
+add, never delete. About 20 minutes.
+
+**A. Put the connector online (Cloudflare)**
+
+1. Go to <https://dash.cloudflare.com/sign-up> and create a free account (confirm your email).
+2. In the left menu, click **Compute (Workers)** → **Workers & Pages** → **Create**.
+3. Choose **Import a repository** → **Connect GitHub**. GitHub asks which repositories Cloudflare may see:
+   choose **Only select repositories** → `my-people` → **Install & Authorize**.
+4. Back on Cloudflare, pick `my-people`. Set **Project name** to `my-people-connector`. Leave the build
+   command empty and the deploy command as `npx wrangler deploy`. Under advanced settings, set the
+   **production branch** to `stable` (like the scheduled jobs, it then only updates when you move `stable`).
+5. Click **Create and deploy** and wait for the green tick (a minute or two).
+6. Note the address it shows, like `https://my-people-connector.yourname.workers.dev`. Opening it says the
+   connector isn't set up yet: that's expected. Below, **YOUR-ADDRESS** means this address.
+
+**B. Create the GitHub App (the sign-in)**
+
+1. On GitHub: your profile picture (top right) → **Settings** → at the bottom of the left menu,
+   **Developer settings** → **GitHub Apps** → **New GitHub App**.
+2. **GitHub App name**: something unique, e.g. `My people connector yourname`.
+3. **Homepage URL**: YOUR-ADDRESS.
+4. **Callback URL**: YOUR-ADDRESS followed by `/callback` (e.g. `https://my-people-connector.yourname.workers.dev/callback`).
+   Keep **Expire user authorization tokens** ticked.
+5. Under **Webhook**, untick **Active**.
+6. Under **Permissions** → **Repository permissions** → **Contents**: choose **Read and write**. Leave the rest.
+7. **Where can this GitHub App be installed?**: **Only on this account**. Click **Create GitHub App**.
+8. On the next page, copy the **Client ID** (starts with `Iv`) somewhere safe for a moment.
+9. Click **Generate a new client secret** and copy it too (it's shown only once).
+10. In the left menu, click **Install App** → **Install** next to your account → **Only select repositories** →
+    `my-people-data` → **Install**.
+
+**C. Give the connector its settings (Cloudflare)**
+
+1. In Cloudflare, open **Workers & Pages** → `my-people-connector` → **Settings** → **Variables and Secrets** → **Add**.
+2. Add these five, one at a time (**Type** as shown, then **Save**/**Deploy**):
+
+   | Type | Variable name | Value |
+   |---|---|---|
+   | Text | `GITHUB_CLIENT_ID` | the Client ID from B.8 |
+   | Secret | `GITHUB_CLIENT_SECRET` | the client secret from B.9 |
+   | Text | `ALLOWED_LOGIN` | your GitHub username, e.g. `chaos-ctrl` |
+   | Text | `DATA_REPO` | `chaos-ctrl/my-people-data` |
+   | Secret | `TOKEN_SECRET` | 40 or more random letters and digits (use your password manager's generator) |
+
+3. Open YOUR-ADDRESS again: it now says "This is working".
+
+**D. Add it to your assistant**
+
+- **Claude** (<https://claude.ai>, then it also works in the phone app): **Settings** → **Connectors** →
+  **Add custom connector**. Name: `My people`. URL: YOUR-ADDRESS followed by `/mcp`. Click **Add**, then
+  **Connect**: GitHub asks you to authorise your app → **Authorize**. In a chat, try "who should I call this week?".
+- **Other assistants** that support remote MCP connectors with sign-in (e.g. ChatGPT in developer mode): add a
+  connector with the same `/mcp` address.
+
+**To cut access**: on GitHub, **Settings** → **Applications** → **Authorized GitHub Apps** → **Revoke** next to your
+app. Changing `TOKEN_SECRET` in Cloudflare also signs every assistant out.
+
+---
+
 ## Renewing the token
 
 The app warns you 14 days before the token expires.
@@ -256,7 +321,7 @@ your people's data, only the (encrypted) token.
 ## Updating the app
 
 The app itself (what you see in the browser) updates as soon as new code is merged into `main`.
-The robots keep using the `stable` bookmark until you move it:
+The robots (and the AI connector, if you set it up) keep using the `stable` bookmark until you move it:
 
 1. Go to <https://github.com/chaos-ctrl/my-people/compare/stable...main>.
 2. Click **Create pull request**, then **Create pull request** again.
@@ -285,4 +350,6 @@ The robots keep using the `stable` bookmark until you move it:
 | "…can read the repository but not save to it" | Give the token **Contents: Read and write**. You can edit an existing token's permissions on GitHub. |
 | "The token needs the Actions: Read and write permission" | Only needed for the test button; add it to the token, or run **Reminders** from the Actions tab with **test** ticked. |
 | "This file needs fixing" in the list | Someone (or an AI) broke that person's file. Tap it → **Open the file on GitHub** and fix the part between the `---` lines. |
+| The connector says "Not allowed" | `ALLOWED_LOGIN` in Cloudflare must be the GitHub account you signed in with. |
+| The assistant can't reach your people ("Not found") | Check `DATA_REPO`, and that the GitHub App is installed on `my-people-data` (B.10). |
 | A reminder run fails with "settings.yml can't be read" | The settings file has a typo. Open it on GitHub; the error names the line. |

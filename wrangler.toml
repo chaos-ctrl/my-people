@@ -1,0 +1,8 @@
+# Cloudflare Workers config for the AI connector (connector/). See docs/SETUP.md, "Connect an AI assistant".
+# Settings (GITHUB_CLIENT_ID, ALLOWED_LOGIN, DATA_REPO) and secrets (GITHUB_CLIENT_SECRET, TOKEN_SECRET) are
+# set in the Cloudflare dashboard; keep_vars stops a deploy from erasing them.
+name = "my-people-connector"
+main = "connector/worker.js"
+compatibility_date = "2025-06-01"
+keep_vars = true
+workers_dev = true

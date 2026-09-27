@@ -426,6 +426,24 @@ and do so without breaking the format. The app must keep working whatever an AI 
 format rules are followed; parse errors in one file must not break the whole app (show that person with
 a warning instead).
 
+### 5.1 Remote connector (MCP)
+
+`connector/` is a remote MCP server (Streamable HTTP, stateless JSON replies) for assistants on any device,
+deployed as a Cloudflare Worker (`wrangler.toml`; standard web APIs only, so it also runs on Deno or Node).
+It reuses `src/core` and the app's `GitHub`/`Store` classes, so writes follow the file format and conflict rules.
+
+- **Auth**: an OAuth 2.1 authorization server (RFC 8414 metadata, RFC 9728 protected-resource metadata,
+  RFC 7591 dynamic client registration, PKCE S256 required, public clients) that delegates sign-in to a
+  **GitHub App** installed only on `my-people-data` (Contents: read and write). Only `ALLOWED_LOGIN` gets tokens.
+  Everything is stateless: client ids, codes (2 min), access tokens (≤ 8 h) and refresh tokens (180 days) are
+  AES-GCM-sealed JSON under `TOKEN_SECRET`, each bound to its kind; the GitHub user token (and its refresh
+  token) live only inside them. Codes aren't single-use (stateless), hence the short life and PKCE.
+- **Config**: `GITHUB_CLIENT_ID`, `ALLOWED_LOGIN`, `DATA_REPO` (vars); `GITHUB_CLIENT_SECRET`, `TOKEN_SECRET` (secrets).
+- **Tools**: `list_people`, `get_person`, `briefing`, `log_contact` (several people, one commit, optional Log
+  note), `add_note`, `add_ask_about` (optional date → dated follow-up), `add_gift_idea` (status), `add_person`
+  (requires a last contact), `update_person` (sets fields, never removes), `snooze`. No deletions. People are
+  found by slug, name, alias or unique first name; ambiguity is an error asking the assistant to check with the user.
+
 ## 6. Setup guide (to be written as `docs/SETUP.md`, step by step for a beginner)
 
 1. Enable GitHub Pages on `my-people` (Settings → Pages → Deploy from branch `main`, root).

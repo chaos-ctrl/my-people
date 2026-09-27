@@ -61,7 +61,8 @@ Keep it short: decisions and status, not a diary.
 - [x] Phase 4c (`src/core/phone-contacts.js`, `pickContacts` in imports.js, button in Settings → Import only
       where supported; e2e with a mocked picker): import people from phone contacts (Contact Picker API; bulk dialog: group, rhythm, last
       contact approx; one commit via `store.createPeople`).
-- [ ] Phase 3: MCP connector in `connector/` (Worker entry `connector/worker.js`, `wrangler.toml` at repo root,
+- [x] Phase 3 (`connector/`, `wrangler.toml`, `tests/connector.test.js`, SETUP step 10, SPEC 5.1). Notes: GitHub
+      class got a `userAgent` option (required server-side); tools are text-only. Original plan: MCP connector in `connector/` (Worker entry `connector/worker.js`, `wrangler.toml` at repo root,
       reusing `src/core`). OAuth 2.1 authorization server (metadata, dynamic client registration, PKCE)
       delegating login to the GitHub App; only the configured GitHub login allowed. Tools: list_people,
       get_person, briefing (overdue/upcoming/follow-ups/trips), log_contact(s) with note, add_note/ask/gift,
@@ -75,7 +76,8 @@ Keep it short: decisions and status, not a diary.
 1. Merge `claude/eloquent-davinci-hks9r0` into `main` (a PR can be opened for them on request).
 2. Follow docs/SETUP.md steps 1–9 (Pages, `stable` branch, data repo + template files, token, app, ntfy,
    secrets, calendar address, home screen, test).
-3. Copy the updated `data-repo-template/AGENTS.md` into `my-people-data` (new rules for notes, follow-ups,
+3. Optional: set up the AI connector (docs/SETUP.md step 10: Cloudflare + GitHub App, ~20 min).
+4. Copy the updated `data-repo-template/AGENTS.md` into `my-people-data` (new rules for notes, follow-ups,
    gifts, city, trips).
-4. After new template files change (settings.yml gained keys; trips come later): nothing required —
+5. After new template files change (settings.yml gained keys; trips come later): nothing required —
    missing settings use defaults.

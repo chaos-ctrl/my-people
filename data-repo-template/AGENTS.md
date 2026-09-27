@@ -66,6 +66,11 @@ Met through climbing. Allergic to cats.
 
 Only `name` is required. Keep keys in the order shown (unknown keys stay where they are). Files are UTF-8 with LF line endings. The part between the `---` lines must be valid YAML.
 
+## Through the "My people" connector
+
+If you have the connector's tools (`log_contact`, `add_note`, …), use them rather than editing files: they apply
+the rules below for you. Its `get_person` shows the file if you need details.
+
 ## Updating people
 
 When the user says things like "had dinner with Marc yesterday, he's starting a new job":

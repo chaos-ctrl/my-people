@@ -55,6 +55,8 @@ repo, issues, commit messages beyond names, or external services.
 - `index.html`, `assets/`, `src/app/`: the web app (vanilla JS modules, no build step).
 - `src/core/`: code shared by the app and the scripts (file format, YAML edits, dates, status).
 - `src/vendor/`: vendored libraries (`yaml`, ISC licence). Don't load anything from a CDN.
+- `connector/`: the remote MCP connector (Cloudflare Worker, `wrangler.toml` at the root; standard web APIs only).
+  Tools in `connector/tools.js`; it reuses `src/core` and `src/app/github.js`/`store.js` (keep those DOM-free).
 - `scripts/`: the scheduled jobs (`reminders.mjs`, `calendar-sync.mjs`), Node.js 20+, no dependencies.
 - `data-repo-template/`: the files that go into `my-people-data` (see `docs/SETUP.md`).
 - `tests/`: `npm test` (Node's built-in test runner). Fixtures are fictional people only.

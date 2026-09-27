@@ -30,9 +30,10 @@ export function fromBase64(b64) {
 const encodePath = p => p.split('/').map(encodeURIComponent).join('/');
 
 export class GitHub {
-  /** @param {string} token @param {string} repo "owner/name" */
-  constructor(token, repo) {
+  /** @param {string} token @param {string} repo "owner/name" @param {{userAgent?: string}} [options] */
+  constructor(token, repo, { userAgent = null } = {}) {
     this.token = token;
+    this.userAgent = userAgent; // servers must send one (browsers send their own)
     this.repo = repo;
     [this.owner, this.name] = repo.split('/');
     this.expiry = null; // from the token-expiration header, when the browser is allowed to read it
@@ -49,6 +50,7 @@ export class GitHub {
           Authorization: `Bearer ${this.token}`,
           Accept: 'application/vnd.github+json',
           'X-GitHub-Api-Version': '2022-11-28',
+          ...(this.userAgent ? { 'User-Agent': this.userAgent } : {}),
           ...(body ? { 'Content-Type': 'application/json' } : {}),
         },
         body: body ? JSON.stringify(body) : undefined,
