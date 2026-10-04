@@ -14,6 +14,7 @@ TOOLS=/tmp/tools node tests/e2e/connector-workerd.mjs  # connector in workerd, d
 TOOLS=/tmp/tools node tests/e2e/perf.mjs 1000          # timings with 1000 generated people, CPU slowed 4× (THROTTLE=1 for none)
 TOOLS=/tmp/tools node tests/e2e/lighthouse.mjs         # Lighthouse accessibility + best practices (home, weekly, insights, settings)
 TOOLS=/tmp/tools node tests/e2e/e2e5.mjs              # offline copy, queued logs, reconnect
+TOOLS=/tmp/tools node tests/e2e/e2e6.mjs              # search snippets, reminder tuning settings, backup, data check
 TOOLS=/tmp/tools SHOTS=/tmp node tests/e2e/e2e4.mjs  # weekly, insights, group log, notes, gifts, snooze, deep link; axe at 360px light/dark
 ```
 

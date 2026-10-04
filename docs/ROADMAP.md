@@ -76,8 +76,18 @@ Keep it short: decisions and status, not a diary.
       weekly, insights, settings; fixed label-in-name on person cards); month names (EN/FR) in follow-ups.
 - [x] ~~Per-person "places" filter~~: dropped by the user (Sept 2026).
 
+### Phase 7 (done, Oct 2026; the user said "do all the ideas", so no further brainstorming)
+- [x] Reminder tuning: `defaults.group_frequency_days` (rhythm per group; own > group > default) and
+      `reminders.pause_until` (scheduled digest paused, e.g. holidays; manual/test runs ignore it). Quiet hours
+      dropped: the digest is sent only at the chosen hour, so they'd add nothing. Settings UI + tests.
+- [x] Birthday gift prompts: digest line "Gift to sort" (own birthday beyond `lookahead_days`, within
+      `gift_prompt_days`, default 14, 0 = off; skipped once a gift is `[bought]` or `[given <year>]`).
+- [x] Backup: Settings → Your data → zip download (`makeZip` in `src/core/zip.js`, uncompressed).
+- [x] Search: "Everyone" search already covered notes; rows now show a snippet of where it matched.
+- [x] Health check: `src/core/health.js`, `scripts/check-data.mjs`, Settings → Check my data. e2e: `e2e6.mjs`.
+
 ## User to-do (remind them)
-1. Merge `claude/jolly-bohr-o92ate` (contains all work so far) into `main`: docs/SETUP.md, "Merging new work".
+1. Merge `claude/tender-faraday-p0mm31` (Phase 7, on top of everything merged so far) into `main`: docs/SETUP.md, "Merging new work".
 2. Follow docs/SETUP.md steps 1–9 (Pages, `stable` branch, data repo + template files, token, app, ntfy,
    secrets, calendar address, home screen, test).
 3. Optional: set up the AI connector (docs/SETUP.md step 10: Cloudflare + GitHub App, ~20 min).

@@ -356,3 +356,24 @@ export function createPersonText(form, { cap = CONTACTS_CAP, today = null } = {}
   const blank = newPersonFile({ name: form.name.trim() });
   return applyFormChanges(blank, formChanges(formOf(readPerson('new', blank)), form), { cap, today });
 }
+
+/**
+ * Where a search matched, for text that isn't the name: a short excerpt of the first matching note, follow-up,
+ * gift or log line, or '' when the match is on the name, group or city (already visible) or there is none.
+ * `q` is the normalised query.
+ */
+export function searchSnippet(p, q) {
+  if (!q) return '';
+  const visible = normalise([p.name, ...p.aliases, p.group, p.city].filter(Boolean).join(' '));
+  if (visible.includes(q)) return '';
+  const lines = [...p.ask.map(t => ['Ask about', t]), ...p.gifts.map(t => ['Gift', t]),
+    ...p.log.map(l => ['Log', l.note]), ...p.notes.split('\n').map(t => ['Notes', t.replace(/^\s*[-*]\s*/, '')])];
+  for (const [label, text] of lines) {
+    const t = String(text ?? '').trim();
+    const i = normalise(t).indexOf(q);
+    if (i < 0) continue;
+    const from = Math.max(0, i - 25), to = Math.min(t.length, i + q.length + 40);
+    return `${label}: ${from > 0 ? '…' : ''}${t.slice(from, to)}${to < t.length ? '…' : ''}`;
+  }
+  return '';
+}

@@ -24,3 +24,8 @@ export function formatGift({ status = 'idea', when = null, text }) {
 export function openGifts(items) {
   return items.map(parseGift).filter(g => g.text && g.status !== 'given');
 }
+
+/** True when a gift is already bought, or was given in `year`: nothing left to plan for that birthday. */
+export function giftSorted(items, year) {
+  return items.map(parseGift).some(g => g.text && (g.status === 'bought' || (g.status === 'given' && String(g.when ?? '').startsWith(year))));
+}

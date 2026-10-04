@@ -145,6 +145,7 @@ through the Git Data API (trees and commits), with the same conflict handling as
 timezone: Europe/Paris
 defaults:
   frequency_days: 30
+  group_frequency_days: {}  # rhythm per group, e.g. {Family: 14}; person's own rhythm > group > default
 
 status:                     # thresholds as a ratio of days since last contact / frequency_days
   soon: 0.6                 # below → green, from here → yellow
@@ -166,6 +167,8 @@ reminders:
   include_follow_ups: true  # dated "Ask about" items coming up or just past
   include_trips: true       # upcoming trips, with who lives there
   include_gift_ideas: false # gift ideas next to upcoming birthdays
+  gift_prompt_days: 14      # nudge to sort a gift this many days before a birthday (0 = off)
+  pause_until: ""           # no scheduled reminders up to and including this day (YYYY-MM-DD)
 
 calendar_sync:
   enabled: true
@@ -281,6 +284,12 @@ that state only occurs for files created elsewhere, and such people are sorted a
 overdue (not in "Time to reach out", the overdue count or reminders).
 Dates entered as DD/MM or DD/MM/YYYY (French/European order) and stored as MM-DD / YYYY-MM-DD.
 
+**Everyone search** also matches notes, follow-ups, gifts and log lines; a row then shows where it matched.
+
+**Settings → Your data**: *Download a backup (.zip)* (all people files + settings, built on the device, stored
+uncompressed) and *Check my data* (`src/core/health.js`: unreadable files, invalid dates, bad rhythm, duplicate
+names/aliases, contacts out of order). The same check runs from `node scripts/check-data.mjs --data <dir>`.
+
 **Settings**: reminders (all fields in `settings.yml → reminders`), calendar sync keywords, status
 thresholds, default rhythm, and the security section (3.3). A "Send a test notification" button triggers
 the reminders workflow via `workflow_dispatch` with a `test: true` input.
@@ -375,7 +384,9 @@ bookmark the user moves forward with a pull request from `main`) and run them.
   cron. Runs are ~10 seconds; hourly runs fit well within the free Actions quota.
 - Builds one message: `people_count` overdue people (not snoozed; the most overdue always, the rest rotating
   week by week when `rotate` is on), birthdays/anniversaries within `lookahead_days` (with open gift ideas
-  if `include_gift_ideas`), dated follow-ups and trips. Respects `detail_level` and `skip_if_empty`.
+  if `include_gift_ideas`), dated follow-ups and trips. A "Gift to sort" line lists people whose own birthday
+  is further away than `lookahead_days` but within `gift_prompt_days`, unless a gift is already `[bought]` or
+  `[given <that year>]`. Scheduled runs send nothing up to `pause_until` (manual and test runs ignore it). Respects `detail_level` and `skip_if_empty`.
   The notification has one button per suggested person, opening `#person/<slug>` in the app.
 - Sends via **ntfy**: `POST {NTFY_SERVER}/{NTFY_TOPIC}` with a title ("My people") and a click action
   opening the app URL. If `email` is in `channels`, adds the `Email: {NTFY_EMAIL}` header so ntfy forwards
