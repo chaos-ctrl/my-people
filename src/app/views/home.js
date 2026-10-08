@@ -1,7 +1,7 @@
 // Home: reach out, ask how it went, coming up, check these, everyone, still to find out.
 
 import { $, h, fill } from '../dom.js';
-import { sortByStatus, personStatus, needingAttention, upcomingDates, missingBirthdays, searchText, isSnoozed, removeAskItem } from '../../core/model.js';
+import { sortByStatus, personStatus, needingAttention, upcomingDates, missingBirthdays, searchText, searchSnippet, isSnoozed, removeAskItem } from '../../core/model.js';
 import { formatAgo, formatUpcoming, formatDayFirst, parseYearly, formatShortDate } from '../../core/dates.js';
 import { followUps, formatFollowUpDate } from '../../core/followups.js';
 import { openGifts } from '../../core/gifts.js';
@@ -162,7 +162,8 @@ export function createHome(ctx) {
   }
 
   /** One row of "Everyone". */
-  function rowEl(p, st, today = ctx.today()) {
+  function rowEl(p, st, today = ctx.today(), q = '') {
+    const snippet = searchSnippet(p, q);
     const settings = ctx.store.settings;
     const snoozed = isSnoozed(p, today);
     const meta = [p.group, p.city, rhythmLabel(st.frequency), st.days === null ? 'never logged' : formatAgo(st.days),
@@ -182,7 +183,7 @@ export function createHome(ctx) {
     return h('div.row', { class: `row ${statusClass(st)}${snoozed ? ' snoozed' : ''}`, dataset: { slug: p.slug } },
       h('button.open', { type: 'button', onclick: () => ctx.openSheet(p.slug) },
         h('span.dot', { aria: { hidden: 'true' } }, initials(p.name)),
-        h('span.text', h('span.name', p.name), h('span.meta', meta))),
+        h('span.text', h('span.name', p.name), h('span.meta', meta), snippet && h('span.meta.snippet', snippet))),
       right,
       h('span.bar', { aria: { hidden: 'true' }, style: { '--w': width } }));
   }
@@ -194,7 +195,7 @@ export function createHome(ctx) {
     for (const s of new Set([before, slug].filter(Boolean))) {
       const el = document.querySelector(`#list .row[data-slug="${CSS.escape(s)}"]`);
       const p = ctx.store.person(s);
-      if (el && p && !p.error) el.replaceWith(rowEl(p, personStatus(p, ctx.store.settings, ctx.today())));
+      if (el && p && !p.error) el.replaceWith(rowEl(p, personStatus(p, ctx.store.settings, ctx.today()), ctx.today(), normalise(ui.query.trim())));
     }
   }
 
@@ -208,7 +209,7 @@ export function createHome(ctx) {
     const rows = sortByStatus(ok, settings, today)
       .filter(({ person: p }) => (!ui.group || p.group === ui.group) && (!ui.city || p.city === ui.city) && (!q || searchable(p).includes(q)));
 
-    const els = rows.map(({ person: p, status: st }) => rowEl(p, st, today));
+    const els = rows.map(({ person: p, status: st }) => rowEl(p, st, today, q));
 
     const brokenEls = broken.filter(p => !q || normalise(p.slug).includes(q)).map(p => h('div.row.broken.st-none',
       h('button.open', { type: 'button', onclick: () => ctx.showBroken(p) },

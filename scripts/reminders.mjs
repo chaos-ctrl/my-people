@@ -24,8 +24,10 @@ export async function run({ dir, test = false, manual = false, dryRun = false, n
     if (!manual && !isDue(settings, now)) return log('Not the reminder time yet.'), 'not-due';
   }
 
-  const people = (await loadPeople(dir)).map(p => readPerson(p.slug, p.text));
   const today = todayIn(settings.timezone, now);
+  if (!test && !manual && r.pause_until && today <= r.pause_until) return log(`Reminders are paused until ${r.pause_until}.`), 'paused';
+
+  const people = (await loadPeople(dir)).map(p => readPerson(p.slug, p.text));
   const trips = readTrips(await readText(join(dir, 'trips.yml'), ''));
   const digest = buildDigest(people, settings, today, { trips });
   if (digest.empty && !test && r.skip_if_empty) return log('Nothing to report, so nothing sent.'), 'empty';

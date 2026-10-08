@@ -51,6 +51,7 @@ const ctx = {
   dismissReview: item => review.dismiss(item),
   resolveReview: (item, message) => review.resolve(item, message),
   showBroken,
+  showInfo,
   changeStorage: () => auth.showSetup({ changing: true }),
   refreshSettings: () => settings.render(),
   get actions() { return actions; },
@@ -338,15 +339,20 @@ function showError(e) {
   } else toast(message, { ms: 8000 });
 }
 
+/** The small "info" dialog with a title and any content. */
+function showInfo(title, ...content) {
+  $('#info-title').textContent = title;
+  fill($('#info-body'), ...content);
+  openDialog($('#info'));
+}
+
 function showBroken(p) {
-  $('#info-title').textContent = p.name;
   const url = `https://github.com/${app.device.repo}/blob/HEAD/${p.path.split('/').map(encodeURIComponent).join('/')}`;
-  fill($('#info-body'),
+  showInfo(p.name,
     h('p', 'This file couldn’t be read, so the app leaves it alone until it’s fixed.'),
     h('p.mono', p.error),
     h('p', h('a', { href: url, target: '_blank', rel: 'noopener' }, 'Open the file on GitHub')),
     h('p.hint', 'The part between the two “---” lines must be valid YAML (see AGENTS.md in the data repository).'));
-  openDialog($('#info'));
 }
 
 // ---------------- start ----------------

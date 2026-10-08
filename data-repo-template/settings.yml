@@ -2,6 +2,7 @@
 timezone: Europe/Paris
 defaults:
   frequency_days: 30        # default contact rhythm for people without their own
+  group_frequency_days: {}  # rhythm per group, e.g. {Family: 14, Colleagues: 90}; a person's own rhythm still wins
 
 status:                     # thresholds as a ratio of days since last contact / frequency_days
   soon: 0.6                 # below → green, from here → yellow
@@ -23,6 +24,8 @@ reminders:
   include_follow_ups: true  # dated "Ask about" items coming up or just past
   include_trips: true       # upcoming trips, with who lives there
   include_gift_ideas: false # gift ideas next to upcoming birthdays
+  gift_prompt_days: 14      # nudge to sort a gift this many days before a birthday (0 = off)
+  pause_until: ""           # no scheduled reminders up to and including this day (YYYY-MM-DD), e.g. on holiday
 
 calendar_sync:
   enabled: true

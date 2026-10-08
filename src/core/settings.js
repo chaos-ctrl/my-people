@@ -1,10 +1,10 @@
 // settings.yml: defaults, and how to read it tolerantly.
 
-import { isPlainObject } from './text.js';
+import { isPlainObject, normalise } from './text.js';
 
 export const DEFAULT_SETTINGS = Object.freeze({
   timezone: 'Europe/Paris',
-  defaults: { frequency_days: 30 },
+  defaults: { frequency_days: 30, group_frequency_days: {} },
   status: { soon: 0.6, overdue: 1.0, long_overdue: 1.5 },
   reminders: {
     enabled: true,
@@ -21,6 +21,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
     include_follow_ups: true,
     include_trips: true,
     include_gift_ideas: false,
+    gift_prompt_days: 14,
+    pause_until: '',
   },
   calendar_sync: {
     enabled: true,
@@ -49,7 +51,8 @@ function mergeDefaults(def, raw) {
   const out = {};
   for (const [k, d] of Object.entries(def)) {
     const v = raw[k];
-    if (isPlainObject(d)) out[k] = mergeDefaults(d, isPlainObject(v) ? v : {});
+    if (isPlainObject(d) && !Object.keys(d).length) out[k] = positiveNumbers(v);
+    else if (isPlainObject(d)) out[k] = mergeDefaults(d, isPlainObject(v) ? v : {});
     else if (Array.isArray(d)) out[k] = Array.isArray(v) ? v.map(x => String(x)) : [...d];
     else if (typeof d === 'number') out[k] = typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : d;
     else if (typeof d === 'boolean') out[k] = typeof v === 'boolean' ? v : d;
@@ -58,10 +61,24 @@ function mergeDefaults(def, raw) {
   return out;
 }
 
-/** Frequency for a person: their own if valid, else the default. */
+/** A free-form {name: days} map (e.g. rhythm per group); entries that aren't positive numbers are dropped. */
+function positiveNumbers(v) {
+  const out = {};
+  if (isPlainObject(v)) for (const [k, n] of Object.entries(v)) if (typeof n === 'number' && Number.isFinite(n) && n > 0) out[k] = n;
+  return out;
+}
+
+/** Frequency for a person: their own if valid, else their group's, else the default. */
 export function frequencyOf(person, settings) {
   const f = person?.frequency_days;
-  return typeof f === 'number' && f > 0 ? f : (settings.defaults.frequency_days || 30);
+  if (typeof f === 'number' && f > 0) return f;
+  const g = normalise(person?.group ?? '').trim();
+  if (g) {
+    for (const [name, days] of Object.entries(settings.defaults.group_frequency_days ?? {})) {
+      if (normalise(name).trim() === g) return days;
+    }
+  }
+  return settings.defaults.frequency_days || 30;
 }
 
 /** The settings.yml written into a new data repository (kept identical to data-repo-template/settings.yml). */
@@ -69,6 +86,7 @@ export const SETTINGS_TEMPLATE = `# Settings for "My people". The app's Settings
 timezone: Europe/Paris
 defaults:
   frequency_days: 30        # default contact rhythm for people without their own
+  group_frequency_days: {}  # rhythm per group, e.g. {Family: 14, Colleagues: 90}; a person's own rhythm still wins
 
 status:                     # thresholds as a ratio of days since last contact / frequency_days
   soon: 0.6                 # below → green, from here → yellow
@@ -90,6 +108,8 @@ reminders:
   include_follow_ups: true  # dated "Ask about" items coming up or just past
   include_trips: true       # upcoming trips, with who lives there
   include_gift_ideas: false # gift ideas next to upcoming birthdays
+  gift_prompt_days: 14      # nudge to sort a gift this many days before a birthday (0 = off)
+  pause_until: ""           # no scheduled reminders up to and including this day (YYYY-MM-DD), e.g. on holiday
 
 calendar_sync:
   enabled: true

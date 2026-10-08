@@ -47,6 +47,7 @@ jobs:
       - run: node tests/e2e/e2e3.mjs
       - run: node tests/e2e/e2e4.mjs
       - run: node tests/e2e/e2e5.mjs
+      - run: node tests/e2e/e2e6.mjs
       - run: node tests/e2e/a11y.mjs
       - run: node tests/e2e/connector-workerd.mjs
       - name: Keep the screenshots

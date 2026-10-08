@@ -3,7 +3,7 @@
 import { zonedParts, formatDuration, formatUpcoming, daysBetween } from '../../src/core/dates.js';
 import { needingAttention, upcomingDates } from '../../src/core/model.js';
 import { followUps, formatFollowUpDate } from '../../src/core/followups.js';
-import { openGifts } from '../../src/core/gifts.js';
+import { openGifts, giftSorted } from '../../src/core/gifts.js';
 import { upcomingTrips, formatTripDates } from '../../src/core/trips.js';
 import { firstName } from '../../src/core/text.js';
 
@@ -69,6 +69,20 @@ export function buildDigest(people, settings, today, { trips = [] } = {}) {
   };
   const bdays = upcoming.filter(u => u.kind === 'birthday');
   const annivs = upcoming.filter(u => u.kind === 'anniversary');
+  // Gift planning: a nudge for a person's own birthday that is further away than the look-ahead (closer ones
+  // are in the Birthdays line), while no gift is bought or given this year.
+  const planWindow = r.gift_prompt_days ?? 0;
+  if (planWindow > 0) {
+    const planning = upcomingDates(people, today, planWindow, { birthdays: true, anniversaries: false })
+      .filter(u => !u.relation && u.days > r.lookahead_days && !giftSorted(people.find(p => p.slug === u.slug)?.gifts ?? [], u.date.slice(0, 4)));
+    if (planning.length) {
+      lines.push('Gift to sort: ' + planning.map(u => {
+        const ideas = r.include_gift_ideas ? openGifts(people.find(p => p.slug === u.slug)?.gifts ?? []).map(g => g.text) : [];
+        const when = withDays ? ` (${formatUpcoming(u.date, u.days)})` : '';
+        return `${u.name}${when}${ideas.length ? ` — ideas: ${ideas.join(', ')}` : ''}`;
+      }).join(', '));
+    }
+  }
   if (bdays.length) lines.push('Birthdays: ' + bdays.map(describe).join(', '));
   if (annivs.length) lines.push('Anniversaries: ' + annivs.map(describe).join(', '));
 

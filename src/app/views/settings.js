@@ -6,6 +6,19 @@ import { WEEKDAYS, FREQUENCY_PRESETS, SETTINGS_TEMPLATE } from '../../core/setti
 import { deepEqual, isPlainObject } from '../../core/text.js';
 import { parseDayFirst, formatDayFirst, daysBetween } from '../../core/dates.js';
 import { rhythmLabel } from './home.js';
+import { makeZip } from '../../core/zip.js';
+import { checkPeople } from '../../core/health.js';
+
+/** "Family: 14, Colleagues: 90" → {Family: 14, Colleagues: 90}; null if a part isn't "name: days". */
+export function parseGroupRhythms(text) {
+  const out = {};
+  for (const part of text.split(/[,\n]/).map(x => x.trim()).filter(Boolean)) {
+    const m = part.match(/^(.+?)\s*[:=]\s*(\d+)$/);
+    if (!m || +m[2] < 1) return null;
+    out[m[1].trim()] = +m[2];
+  }
+  return out;
+}
 
 const DAY_LABEL = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
 const MODE_LABEL = {
@@ -87,6 +100,11 @@ export function createSettings(ctx) {
         check('s-fu', 'Include dated follow-ups (“ask how the exam went”)', r.include_follow_ups),
         check('s-trips', 'Include upcoming trips and who lives there', r.include_trips),
         check('s-gifts', 'Include gift ideas next to birthdays', r.include_gift_ideas),
+        num('s-giftplan', 'Remind me to sort a gift this many days before a birthday (0 = never)', r.gift_prompt_days, { min: 0, max: 60, step: 1 }),
+        h('p.hint', 'Birthdays closer than “Look ahead” are already listed; this adds the ones further away that have no gift bought yet.'),
+        h('label', { for: 's-pause' }, 'Pause reminders until'),
+        h('input.field', { id: 's-pause', value: r.pause_until ? formatDayFirst(r.pause_until) : '', placeholder: 'DD/MM/YYYY (empty = not paused)', inputmode: 'numeric', aria: { describedby: 's-pause-hint' } }),
+        h('p.hint', { id: 's-pause-hint' }, 'For a holiday: nothing is sent up to and including that day. The test button still works.'),
         h('fieldset', h('legend.label', 'Detail'),
           h('div.choices',
             h('label.choice', h('input', { type: 'radio', name: 's-detail', value: 'names', checked: r.detail_level !== 'names_and_days' }),
@@ -123,6 +141,9 @@ export function createSettings(ctx) {
         h('h2#st-rhythm', 'Rhythm and colours'),
         h('label', { for: 's-freq' }, 'Default rhythm for new people'), freqSel,
         h('p.hint', 'Colours depend on the time since the last contact divided by the person’s rhythm.'),
+        h('label', { for: 's-grp' }, 'Rhythm per group (days)'),
+        h('input.field', { id: 's-grp', value: Object.entries(s.defaults.group_frequency_days).map(([g, d]) => `${g}: ${d}`).join(', '), placeholder: 'Family: 14, Colleagues: 90', autocomplete: 'off', aria: { describedby: 's-grp-hint' } }),
+        h('p.hint', { id: 's-grp-hint' }, 'People in that group without a rhythm of their own use it instead of the default. Separate groups with commas.'),
         h('div.two',
           h('div', num('s-soon', 'Yellow from', s.status.soon, { min: 0.1, max: 5, step: 0.1 })),
           h('div', num('s-over', 'Orange from', s.status.overdue, { min: 0.1, max: 5, step: 0.1 }))),
@@ -156,6 +177,9 @@ export function createSettings(ctx) {
       'reminders.include_follow_ups': $('#s-fu').checked,
       'reminders.include_trips': $('#s-trips').checked,
       'reminders.include_gift_ideas': $('#s-gifts').checked,
+      'reminders.gift_prompt_days': Number($('#s-giftplan').value),
+      'reminders.pause_until': parseDayFirst($('#s-pause').value) ?? 'invalid',
+      'defaults.group_frequency_days': parseGroupRhythms($('#s-grp').value) ?? 'invalid',
       'calendar_sync.trips': $('#s-cal-trips').checked,
       'places.home_city': $('#s-home').value.trim(),
       'reminders.detail_level': form.querySelector('input[name="s-detail"]:checked')?.value ?? 'names',
@@ -176,6 +200,9 @@ export function createSettings(ctx) {
     const n = (k, min, max) => Number.isFinite(v[k]) && v[k] >= min && v[k] <= max;
     if (!n('reminders.people_count', 0, 20) || !Number.isInteger(v['reminders.people_count'])) return 'How many people: a whole number from 0 to 20.';
     if (!n('reminders.lookahead_days', 1, 60) || !Number.isInteger(v['reminders.lookahead_days'])) return 'Look ahead: a whole number of days from 1 to 60.';
+    if (!n('reminders.gift_prompt_days', 0, 60) || !Number.isInteger(v['reminders.gift_prompt_days'])) return 'Gift reminder: a whole number of days from 0 to 60.';
+    if (v['reminders.pause_until'] === 'invalid' || (v['reminders.pause_until'] && v['reminders.pause_until'].length !== 10)) return 'Pause until: use DD/MM/YYYY, or leave it empty.';
+    if (v['defaults.group_frequency_days'] === 'invalid') return 'Rhythm per group: write it like “Family: 14, Colleagues: 90”.';
     if (v['reminders.enabled'] && !v['reminders.days'].length) return 'Choose at least one day for reminders.';
     if (v['reminders.enabled'] && !v['reminders.channels'].length) return 'Choose how reminders are sent.';
     if (!(v['status.soon'] > 0 && v['status.soon'] < v['status.overdue'] && v['status.overdue'] < v['status.long_overdue'])) {
@@ -247,6 +274,12 @@ export function createSettings(ctx) {
         h('p.hint', 'On Android, share a WhatsApp chat straight to My people: in the chat, ⋮ → More → Export chat → Without media → My people. Elsewhere, export it and pick the file here.'),
         h('div.actions', h('button.btn.ghost', { type: 'button', onclick: () => ctx.imports.pickFile() }, 'WhatsApp chat…'),
           ctx.imports.canPickContacts() && h('button.btn.ghost', { type: 'button', onclick: () => ctx.imports.pickContacts() }, 'Phone contacts…'))),
+      h('section.settings-section', { aria: { labelledby: 'st-data' } },
+        h('h2#st-data', 'Your data'),
+        h('p.hint', 'A backup is a ZIP of all your people files and settings, saved on this device. It contains private notes: keep it somewhere safe.'),
+        h('div.actions',
+          h('button.btn.ghost', { type: 'button', id: 'd-backup', onclick: downloadBackup }, 'Download a backup (.zip)'),
+          h('button.btn.ghost', { type: 'button', id: 'd-check', onclick: checkData }, 'Check my data'))),
       h('section.settings-section', { aria: { labelledby: 'st-dev' } },
         h('h2#st-dev', 'This device'),
         h('p.hint', 'These stay on this device only.'),
@@ -271,6 +304,31 @@ export function createSettings(ctx) {
         h('div.actions',
           h('button.btn.ghost', { type: 'button', onclick: () => ctx.lock() }, 'Lock now'),
           h('button.btn.danger', { type: 'button', onclick: () => ctx.forget() }, 'Forget this device'))));
+  }
+
+  function downloadBackup() {
+    const { store } = ctx;
+    const paths = ['settings.yml', 'trips.yml', 'calendar-review.yml', ...store.people.map(p => p.path)];
+    const files = paths.map(name => ({ name, data: store.text(name) })).filter(f => f.data !== null);
+    if (!files.length) { toast('Nothing to back up yet.'); return; }
+    const today = ctx.today();
+    const url = URL.createObjectURL(new Blob([makeZip(files)], { type: 'application/zip' }));
+    const a = h('a', { href: url, download: `my-people-backup-${today}.zip` });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    toast(`Backup saved (${files.length} files).`);
+  }
+
+  function checkData() {
+    const { store } = ctx;
+    const issues = checkPeople(store.people.map(p => ({ slug: p.slug, text: store.text(p.path) })), ctx.today());
+    ctx.showInfo('Data check',
+      issues.length
+        ? [h('p', `${store.people.length} people checked. ${issues.length} thing(s) to look at:`),
+          h('ul.health', issues.map(i => h('li', { class: i.level }, h('strong', i.name), ' ', i.level === 'error' ? '(needs fixing) ' : '', i.message)))]
+        : h('p', `${store.people.length} people checked. Everything looks fine.`));
   }
 
   function saveExpiry() {
