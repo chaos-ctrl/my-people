@@ -3,7 +3,9 @@
 import { $, h, fill, openDialog, toast } from '../dom.js';
 import { formOf, formChanges, applyFormChanges, createPersonText, readPerson, CONTACT_TYPES, isSnoozed, setFrequency } from '../../core/model.js';
 import { newPersonFile } from '../../core/person-file.js';
-import { parseDayFirst, formatDayFirst, formatShortDate, addDays, isIsoDay } from '../../core/dates.js';
+import { formatShortDate, addDays, isIsoDay } from '../../core/dates.js';
+import { parseDate, datePlaceholder, getDateFormat } from '../../core/datefmt.js';
+import { dateField } from './datefield.js';
 import { FREQUENCY_PRESETS } from '../../core/settings.js';
 import { contactActions } from '../../core/contact-links.js';
 import { parseGift, formatGift, GIFT_STATUSES } from '../../core/gifts.js';
@@ -61,7 +63,7 @@ export function createSheet(ctx) {
   function kidRow(kid = { name: '', birthday: '' }) {
     const row = h('div.kid', { dataset: { index: kid.index ?? '' } },
       h('input.field.kname', { value: kid.name, placeholder: 'Name', aria: { label: "Child's name" }, autocomplete: 'off' }),
-      h('input.field.kbday', { value: formatDayFirst(kid.birthday), placeholder: 'DD/MM', aria: { label: "Child's birthday (DD/MM or DD/MM/YYYY)" }, inputmode: 'numeric', autocomplete: 'off' }),
+      dateField({ className: 'field kbday', value: kid.birthday, label: `Child's birthday (${datePlaceholder()})` }),
       h('button.icon-btn', { type: 'button', aria: { label: `Remove child ${kid.name}`.trim() }, onclick: () => row.remove() }, '✕'));
     return row;
   }
@@ -184,12 +186,13 @@ export function createSheet(ctx) {
         h('div', field('f-aliases', 'Other names', text('f-aliases', base.aliases, { placeholder: 'Nicknames, with commas' })))),
       h('datalist#cities-list', [...new Set(ctx.store.people.map(x => x.city).filter(Boolean))].map(g => h('option', { value: g }))),
       h('div.two',
-        h('div', field('f-bday', 'Birthday', text('f-bday', formatDayFirst(base.birthday), { placeholder: 'DD/MM or DD/MM/YYYY', inputmode: 'numeric' }))),
+        h('div', field('f-bday', 'Birthday', dateField({ id: 'f-bday', value: base.birthday }))),
         h('div', field('f-partner', 'Partner', text('f-partner', base.partner_name, { placeholder: 'Name' })))),
-      field('f-pbday', "Partner's birthday", text('f-pbday', formatDayFirst(base.partner_birthday), { placeholder: 'DD/MM or DD/MM/YYYY', inputmode: 'numeric' })),
+      field('f-pbday', "Partner's birthday", dateField({ id: 'f-pbday', value: base.partner_birthday })),
       h('div.two',
-        h('div', field('f-anniv', 'Wedding anniversary', text('f-anniv', formatDayFirst(base.anniversary_date), { placeholder: 'DD/MM or DD/MM/YYYY', inputmode: 'numeric' }))),
-        h('div', field('f-anniv-with', 'With', text('f-anniv-with', base.anniversary_with, { placeholder: 'Partner by default' })))),
+        h('div', field('f-anniv', 'Wedding anniversary', dateField({ id: 'f-anniv', value: base.anniversary_date }))),
+        h('div', field('f-anniv-with', 'Anniversary with', text('f-anniv-with', base.anniversary_with, { placeholder: 'Partner by default', 'aria-describedby': 'f-anniv-with-hint' })))),
+      h('p.hint', { id: 'f-anniv-with-hint' }, 'Only fill “Anniversary with” if the anniversary is with someone other than the partner above, or if you left Partner empty. It’s the name shown in reminders (“Julie & Marc”).'),
       h('span.label#kids-label', 'Children'),
       kids,
       h('button.btn.ghost', { type: 'button', onclick: () => { const r = kidRow(); kids.append(r); r.querySelector('input').focus(); } }, 'Add child'),
@@ -236,7 +239,7 @@ export function createSheet(ctx) {
   function readForm() {
     const bad = [];
     const date = (id, label) => {
-      const v = parseDayFirst($(id).value);
+      const v = parseDate($(id).value);
       if (v === null) { bad.push([label, id]); return ''; }
       return v;
     };
@@ -261,7 +264,7 @@ export function createSheet(ctx) {
       children: [...body.querySelectorAll('.kid')].map(r => ({
         name: r.querySelector('.kname').value.trim(),
         birthday: (() => {
-          const v = parseDayFirst(r.querySelector('.kbday').value);
+          const v = parseDate(r.querySelector('.kbday').value);
           if (v === null) bad.push([`birthday of ${r.querySelector('.kname').value.trim() || 'a child'}`, null]);
           return v ?? '';
         })(),
@@ -276,7 +279,7 @@ export function createSheet(ctx) {
     if (state.slug && state.before.frequency_days === null && form.frequency_days === (ctx.store.settings.defaults.frequency_days || 30)) {
       form.frequency_days = null;
     }
-    if (bad.length) return { error: `Check the ${bad.map(b => b[0]).join(', ')}: use DD/MM or DD/MM/YYYY.`, focus: bad[0][1] };
+    if (bad.length) return { error: `Check the ${bad.map(b => b[0]).join(', ')}: use ${datePlaceholder()}.`, focus: bad[0][1] };
     if (form.partner_birthday && !form.partner_name) return { error: "Add the partner's name too.", focus: '#f-partner' };
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return { error: 'That email address doesn’t look right.', focus: '#f-email' };
 

@@ -1,8 +1,9 @@
 // Home: reach out, ask how it went, coming up, check these, everyone, still to find out.
 
+import { formatDate } from '../../core/datefmt.js';
 import { $, h, fill } from '../dom.js';
 import { sortByStatus, personStatus, needingAttention, upcomingDates, missingBirthdays, searchText, searchSnippet, isSnoozed, removeAskItem } from '../../core/model.js';
-import { formatAgo, formatUpcoming, formatDayFirst, parseYearly, formatShortDate } from '../../core/dates.js';
+import { formatAgo, formatUpcoming, parseYearly, formatShortDate } from '../../core/dates.js';
 import { followUps, formatFollowUpDate } from '../../core/followups.js';
 import { openGifts } from '../../core/gifts.js';
 import { contactActions } from '../../core/contact-links.js';
@@ -135,7 +136,7 @@ export function createHome(ctx) {
     $('#review-box').hidden = !items.length;
     fill($('#review'), items.map(item => {
       const kind = item.kind === 'anniversary' ? 'Wedding anniversary' : item.kind === 'birthday' ? 'Birthday' : 'Yearly event';
-      const date = parseYearly(String(item.date ?? '')) ? formatDayFirst(String(item.date)) : String(item.date ?? '');
+      const date = parseYearly(String(item.date ?? '')) ? formatDate(String(item.date)) : String(item.date ?? '');
       return h('div.review-item',
         h('div.summary', String(item.summary ?? item.guessed_name ?? '')),
         h('div.meta', `${kind} · ${date}`),

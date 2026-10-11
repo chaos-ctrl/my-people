@@ -3,7 +3,8 @@
 import { $, h, fill } from '../dom.js';
 import { GitHub } from '../github.js';
 import { DEFAULT_REPO, passkeyPrfSupport, protect, openWithPin, openWithPasskey, storageAvailable } from '../vault.js';
-import { parseDayFirst } from '../../core/dates.js';
+import { parseDate, datePlaceholder, getDateFormat } from '../../core/datefmt.js';
+import { attachDateMask } from './datefield.js';
 
 const MODES = [
   ['passkey', 'Fingerprint or face unlock', 'Uses this device’s own screen lock. Nothing biometric leaves the device. You’ll also set a PIN as a backup.'],
@@ -16,7 +17,15 @@ export function createAuth(ctx) {
   // ---------------- setup ----------------
   const setup = { step: 1, token: null, gh: null, expiry: null, changing: false };
 
+  const expiryInput = $('#setup-expiry');
+  attachDateMask(expiryInput);
+  const syncExpiryField = () => {
+    expiryInput.placeholder = datePlaceholder(getDateFormat(), { yearOptional: false });
+    expiryInput.inputMode = getDateFormat() === 'text' ? 'text' : 'numeric';
+  };
+
   async function showSetup({ changing = false } = {}) {
+    syncExpiryField();
     setup.changing = changing;
     setup.step = changing ? 2 : 1;
     setup.token = changing ? ctx.token() : null;
@@ -86,8 +95,8 @@ export function createAuth(ctx) {
     if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) throw new Error('The repository looks like owner/name, e.g. chaos-ctrl/my-people-data.');
     if (!token) throw new Error('Paste the access token.');
     if (/^ghp_/.test(token)) throw new Error('That’s a classic token, which can see all your repositories. Please create a fine-grained token instead (setup guide, step 3).');
-    const expiry = parseDayFirst($('#setup-expiry').value);
-    if (expiry === null || (expiry && expiry.length !== 10)) throw new Error('Expiry date: use DD/MM/YYYY, or leave it empty.');
+    const expiry = parseDate($('#setup-expiry').value);
+    if (expiry === null || (expiry && expiry.length !== 10)) throw new Error(`Expiry date: use ${datePlaceholder(getDateFormat(), { yearOptional: false })}, or leave it empty.`);
     const gh = new GitHub(token, repo);
     const info = await gh.repoInfo();
     if (!info.permissions?.push) throw new Error('This token can read the repository but not save to it. Give it “Contents: Read and write”.');

@@ -140,7 +140,7 @@ label, .label { display: block; font-size: .88rem; color: var(--muted); margin: 
 .field { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--field); min-height: 44px; }
 textarea.field { min-height: 76px; resize: vertical; }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.kid { display: grid; grid-template-columns: 1fr 120px 44px; gap: 6px; margin-bottom: 6px; }
+.kid { display: grid; grid-template-columns: 1fr 150px 44px; gap: 6px; margin-bottom: 6px; }
 .icon-btn { border: 1px solid var(--line); background: transparent; border-radius: 8px; min-height: 44px; }
 fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 legend { font-weight: 650; padding: 0; margin: 4px 0 8px; }
@@ -210,7 +210,7 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 .followup .extra { display: block; color: var(--muted); font-size: .86rem; }
 .sheet-actions { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 8px; }
 .notice { background: var(--field); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: .92rem; margin: 8px 0; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
-.gift { display: grid; grid-template-columns: 1fr 120px 44px; gap: 6px; margin-bottom: 6px; }
+.gift { display: grid; grid-template-columns: 1fr 150px 44px; gap: 6px; margin-bottom: 6px; }
 .history .note { display: block; color: var(--muted); font-size: .88rem; }
 .history li > span:first-child { min-width: 0; overflow-wrap: anywhere; }
 .pick-list .choice { padding: 8px 12px; }
@@ -249,3 +249,8 @@ li.rowline { display: flex; justify-content: space-between; align-items: center;
 ul.health { list-style: none; margin: .5rem 0; padding: 0; display: grid; gap: .5rem; }
 ul.health li { padding-left: .75rem; border-left: 3px solid var(--muted); }
 ul.health li.error { border-left-color: var(--danger); }
+
+.datebox { display: flex; gap: 4px; align-items: stretch; }
+.datebox .field { flex: 1; min-width: 0; }
+.kbd-toggle { flex: none; min-width: 44px; border: 1px solid var(--line); border-radius: 8px; background: var(--field); color: var(--ink); font: inherit; font-size: .85rem; cursor: pointer; }
+.kbd-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

@@ -64,6 +64,11 @@ Now copy five files into it from the `data-repo-template` folder of `my-people`.
 | `data-repo-template/.github/workflows/reminders.yml` | `.github/workflows/reminders.yml` |
 | `data-repo-template/.github/workflows/calendar-sync.yml` | `.github/workflows/calendar-sync.yml` |
 
+> **Where the files are:** they are inside the folder **`data-repo-template`** of `my-people`, not in the `.github`
+> folder at the top of `my-people` (that one only holds `test.yml`, which is the app's own test, not yours).
+> Direct links: [`reminders.yml`](https://github.com/chaos-ctrl/my-people/blob/main/data-repo-template/.github/workflows/reminders.yml)
+> and [`calendar-sync.yml`](https://github.com/chaos-ctrl/my-people/blob/main/data-repo-template/.github/workflows/calendar-sync.yml).
+
 For each one:
 
 1. In a browser tab, open the file in `my-people`. For example go to
@@ -114,7 +119,10 @@ revoke one without affecting the other.
 1. On your phone, open **Chrome** and go to <https://chaos-ctrl.github.io/my-people/>.
 2. **Data repository** is already filled in: `chaos-ctrl/my-people-data`.
 3. Paste the token into **Access token**.
-4. Type the **Token expiry date** from step 3 (day first: `24/12/2026`).
+4. Type the **Token expiry date** from step 3. On the number keypad just type the digits (`08012027`): the
+   slashes appear by themselves. Tap **Aa** to switch to the full keyboard if you'd rather write the month
+   (`8 Jan 2027`). You can change the date order, or show the month as a word, later in **Settings → This device
+   → Date format**.
 5. Tap **Connect**.
 6. Choose how this phone remembers the token:
    - **Fingerprint or face unlock** (recommended where offered): the token is encrypted and unlocked

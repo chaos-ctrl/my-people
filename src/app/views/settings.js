@@ -1,10 +1,12 @@
 // Settings: shared settings (settings.yml in the data repo) and this device's own preferences.
 
-import { $, h, fill, toast } from '../dom.js';
+import { $, $$, h, fill, toast } from '../dom.js';
 import { parseYaml, patchYaml } from '../../core/yaml-edit.js';
 import { WEEKDAYS, FREQUENCY_PRESETS, SETTINGS_TEMPLATE } from '../../core/settings.js';
 import { deepEqual, isPlainObject } from '../../core/text.js';
-import { parseDayFirst, formatDayFirst, daysBetween } from '../../core/dates.js';
+import { daysBetween } from '../../core/dates.js';
+import { parseDate, formatDate, datePlaceholder, getDateFormat, setDateFormat, getTimeFormat, setTimeFormat, formatHour, DATE_FORMATS, DATE_FORMAT_LABEL, TIME_FORMATS } from '../../core/datefmt.js';
+import { dateField } from './datefield.js';
 import { rhythmLabel } from './home.js';
 import { makeZip } from '../../core/zip.js';
 import { checkPeople } from '../../core/health.js';
@@ -71,7 +73,7 @@ export function createSettings(ctx) {
     const r = s.reminders, c = s.calendar_sync;
     const hours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
     if (!hours.includes(r.time)) hours.push(r.time);
-    const timeSel = h('select.field', { id: 's-time' }, hours.map(t => h('option', { value: t }, t)));
+    const timeSel = h('select.field', { id: 's-time' }, hours.map(t => h('option', { value: t }, formatHour(t))));
     timeSel.value = r.time;
     const freqSel = h('select.field', { id: 's-freq' },
       [...new Set([...FREQUENCY_PRESETS, s.defaults.frequency_days])].sort((a, b) => a - b).map(f => h('option', { value: String(f) }, rhythmLabel(f))));
@@ -103,7 +105,7 @@ export function createSettings(ctx) {
         num('s-giftplan', 'Remind me to sort a gift this many days before a birthday (0 = never)', r.gift_prompt_days, { min: 0, max: 60, step: 1 }),
         h('p.hint', 'Birthdays closer than “Look ahead” are already listed; this adds the ones further away that have no gift bought yet.'),
         h('label', { for: 's-pause' }, 'Pause reminders until'),
-        h('input.field', { id: 's-pause', value: r.pause_until ? formatDayFirst(r.pause_until) : '', placeholder: 'DD/MM/YYYY (empty = not paused)', inputmode: 'numeric', aria: { describedby: 's-pause-hint' } }),
+        dateField({ id: 's-pause', value: r.pause_until, yearOptional: false, describedby: 's-pause-hint' }),
         h('p.hint', { id: 's-pause-hint' }, 'For a holiday: nothing is sent up to and including that day. The test button still works.'),
         h('fieldset', h('legend.label', 'Detail'),
           h('div.choices',
@@ -178,7 +180,7 @@ export function createSettings(ctx) {
       'reminders.include_trips': $('#s-trips').checked,
       'reminders.include_gift_ideas': $('#s-gifts').checked,
       'reminders.gift_prompt_days': Number($('#s-giftplan').value),
-      'reminders.pause_until': parseDayFirst($('#s-pause').value) ?? 'invalid',
+      'reminders.pause_until': parseDate($('#s-pause').value) ?? 'invalid',
       'defaults.group_frequency_days': parseGroupRhythms($('#s-grp').value) ?? 'invalid',
       'calendar_sync.trips': $('#s-cal-trips').checked,
       'places.home_city': $('#s-home').value.trim(),
@@ -201,7 +203,7 @@ export function createSettings(ctx) {
     if (!n('reminders.people_count', 0, 20) || !Number.isInteger(v['reminders.people_count'])) return 'How many people: a whole number from 0 to 20.';
     if (!n('reminders.lookahead_days', 1, 60) || !Number.isInteger(v['reminders.lookahead_days'])) return 'Look ahead: a whole number of days from 1 to 60.';
     if (!n('reminders.gift_prompt_days', 0, 60) || !Number.isInteger(v['reminders.gift_prompt_days'])) return 'Gift reminder: a whole number of days from 0 to 60.';
-    if (v['reminders.pause_until'] === 'invalid' || (v['reminders.pause_until'] && v['reminders.pause_until'].length !== 10)) return 'Pause until: use DD/MM/YYYY, or leave it empty.';
+    if (v['reminders.pause_until'] === 'invalid' || (v['reminders.pause_until'] && v['reminders.pause_until'].length !== 10)) return `Pause until: use ${datePlaceholder(getDateFormat(), { yearOptional: false })} with the year, or leave it empty.`;
     if (v['defaults.group_frequency_days'] === 'invalid') return 'Rhythm per group: write it like “Family: 14, Colleagues: 90”.';
     if (v['reminders.enabled'] && !v['reminders.days'].length) return 'Choose at least one day for reminders.';
     if (v['reminders.enabled'] && !v['reminders.channels'].length) return 'Choose how reminders are sent.';
@@ -261,12 +263,19 @@ export function createSettings(ctx) {
   function renderDevice() {
     const d = ctx.device();
     const theme = (() => { try { return localStorage.getItem('mp.theme') || 'auto'; } catch { return 'auto'; } })();
-    const expiry = d.expiry ? `${formatDayFirst(d.expiry)} (${daysBetween(ctx.today(), d.expiry)} days left)` : '';
+    const expiry = d.expiry ? `${formatDate(d.expiry)} (${daysBetween(ctx.today(), d.expiry)} days left)` : '';
     const lockSel = h('select.field', { id: 'd-lock', onchange: e => ctx.setDevice({ autoLock: Number(e.target.value) }) },
       [[0, 'Never'], [1, 'After 1 minute'], [5, 'After 5 minutes'], [10, 'After 10 minutes'], [15, 'After 15 minutes'], [30, 'After 30 minutes'], [60, 'After 1 hour']]
         .map(([v, l]) => h('option', { value: String(v) }, l)));
     lockSel.value = String(d.autoLock ?? 10);
     if (!lockSel.value) lockSel.value = '10';
+
+    const dateSel = h('select.field', { id: 'd-datefmt', onchange: e => changeFormats({ date: e.target.value }) },
+      DATE_FORMATS.map(f => h('option', { value: f }, `${DATE_FORMAT_LABEL[f]} (${formatDate('2027-01-08', f)})`)));
+    dateSel.value = getDateFormat();
+    const timeSel2 = h('select.field', { id: 'd-timefmt', onchange: e => changeFormats({ time: e.target.value }) },
+      TIME_FORMATS.map(f => h('option', { value: f }, f === '24h' ? '24-hour (18:30)' : '12-hour (6:30 PM)')));
+    timeSel2.value = getTimeFormat();
 
     fill($('#device-settings'),
       h('section.settings-section', { aria: { labelledby: 'st-import' } },
@@ -286,6 +295,9 @@ export function createSettings(ctx) {
         h('fieldset', h('legend.label', 'Appearance'),
           h('div.checks', [['auto', 'Automatic'], ['light', 'Light'], ['dark', 'Dark']].map(([v, l]) => h('label.check',
             h('input', { type: 'radio', name: 'd-theme', value: v, checked: theme === v, onchange: () => setTheme(v) }), l)))),
+        h('label', { for: 'd-datefmt' }, 'Date format'), dateSel,
+        h('label', { for: 'd-timefmt' }, 'Time format'), timeSel2,
+        h('p.hint', 'How dates and times are typed and shown in this app. Your files always store dates the same way.'),
         h('span.label', 'Security'),
         h('p', MODE_LABEL[d.mode] ?? d.mode, ' ',
           h('button.linkish', { type: 'button', onclick: () => ctx.changeStorage() }, 'Change')),
@@ -296,7 +308,7 @@ export function createSettings(ctx) {
         ctx.offlineAllowed() && h('p.hint', 'The app then opens without a connection, read-only; contacts you log are sent when you’re back online. The copy is locked like your token and deleted with “Forget this device”.'),
         h('label', { for: 'd-expiry' }, 'Token expiry date'),
         h('div.inline',
-          h('input.field', { id: 'd-expiry', value: d.expiry ? formatDayFirst(d.expiry) : '', placeholder: 'DD/MM/YYYY', inputmode: 'numeric', aria: { describedby: 'd-expiry-hint' } }),
+          dateField({ id: 'd-expiry', value: d.expiry ?? '', yearOptional: false, describedby: 'd-expiry-hint' }),
           h('button.btn.ghost', { type: 'button', onclick: saveExpiry }, 'Save')),
         h('p.hint', { id: 'd-expiry-hint' }, expiry ? `Expires ${expiry}. ` : '', 'You’ll see a reminder 14 days before.'),
         h('span.label', 'Data repository'),
@@ -331,9 +343,30 @@ export function createSettings(ctx) {
         : h('p', `${store.people.length} people checked. Everything looks fine.`));
   }
 
+  /** Change how dates/times are typed and shown. Open fields are converted in place, so nothing typed is lost. */
+  function changeFormats({ date, time }) {
+    const held = ['#s-pause', '#d-expiry'].map(id => [id, $(id) ? parseDate($(id).value) : null]);
+    if (date) setDateFormat(date);
+    if (time) setTimeFormat(time);
+    try {
+      if (date) localStorage.setItem('mp.datefmt', date);
+      if (time) localStorage.setItem('mp.timefmt', time);
+    } catch { /* not remembered */ }
+    for (const o of $$('#s-time option')) o.textContent = formatHour(o.value);
+    for (const [id, v] of held) {
+      const el = $(id);
+      if (!el) continue;
+      if (v) el.value = formatDate(v);
+      el.placeholder = datePlaceholder(getDateFormat(), { yearOptional: false });
+      el.inputMode = getDateFormat() === 'text' ? 'text' : 'numeric';
+    }
+    renderDevice();
+    for (const [id, v] of held) if (id === '#d-expiry' && v && $(id)) $(id).value = formatDate(v);
+  }
+
   function saveExpiry() {
-    const v = parseDayFirst($('#d-expiry').value);
-    if (v === null || (v && v.length !== 10)) { ctx.error(new Error('Use DD/MM/YYYY for the expiry date.')); return; }
+    const v = parseDate($('#d-expiry').value);
+    if (v === null || (v && v.length !== 10)) { ctx.error(new Error(`Use ${datePlaceholder(getDateFormat(), { yearOptional: false })} for the expiry date.`)); return; }
     ctx.setDevice({ expiry: v || null });
     renderDevice();
     toast('Saved.');
