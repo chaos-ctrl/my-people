@@ -65,5 +65,46 @@ await step('data check lists the broken file', async () => {
   await page.click('#info-close');
 });
 
+await step('date fields: typing digits adds the slashes; a month word works too', async () => {
+  await page.click('#settings-back');
+  await page.click('#add-person');
+  await page.waitForSelector('#f-bday');
+  await page.locator('#f-bday').pressSequentially('0801');
+  if (await page.inputValue('#f-bday') !== '08/01') throw new Error(await page.inputValue('#f-bday'));
+  await page.locator('#f-bday').pressSequentially('1985');
+  if (await page.inputValue('#f-bday') !== '08/01/1985') throw new Error(await page.inputValue('#f-bday'));
+  await page.locator('#f-pbday').pressSequentially('9');
+  if (await page.inputValue('#f-pbday') !== '09') throw new Error('no padding: ' + await page.inputValue('#f-pbday'));
+  await page.fill('#f-pbday', '');
+  await page.click('#f-pbday ~ .kbd-toggle');
+  if (await page.getAttribute('#f-pbday', 'inputmode') !== 'text') throw new Error('toggle did not switch the keyboard');
+  await page.fill('#f-pbday', '14 march');
+  await page.fill('#f-name', 'Dates Test');
+  await page.fill('#f-partner', 'Pat');
+  await page.selectOption('#l-when', { index: 1 });
+  await page.click('#sheet-save');
+  await page.waitForFunction(() => !document.querySelector('#sheet')?.open);
+  const saved = [...gh.files.entries()].find(([k]) => k.includes('dates-test'))?.[1] ?? '';
+  if (!/birthday: 1985-01-08/.test(saved) || !/birthday: (["']?)03-14/.test(saved)) throw new Error(saved);
+});
+
+await step('date and time format preferences convert open fields and persist', async () => {
+  await page.click('#go-settings');
+  await page.fill('#s-pause', '20/10/2026');
+  await page.selectOption('#d-datefmt', 'mdy');
+  if (await page.inputValue('#s-pause') !== '10/20/2026') throw new Error(await page.inputValue('#s-pause'));
+  await page.selectOption('#d-datefmt', 'text');
+  if (await page.inputValue('#s-pause') !== '20 Oct 2026') throw new Error(await page.inputValue('#s-pause'));
+  await page.selectOption('#d-timefmt', '12h');
+  const label = await page.textContent('#s-time option[value="09:00"]');
+  if (label !== '9:00 AM') throw new Error(label);
+  await page.click('#s-save');
+  await page.waitForFunction(() => document.querySelector('#toast')?.textContent.match(/saved|Nothing/i));
+  const saved = gh.files.get('settings.yml');
+  if (!/pause_until: ["']?2026-10-20/.test(saved)) throw new Error(saved);
+  await page.reload();
+  if (await page.evaluate(() => localStorage.getItem('mp.datefmt')) !== 'text') throw new Error('not remembered');
+});
+
 if (errors.length) { process.exitCode = 1; console.log('page errors:', errors); }
 await browser.close();

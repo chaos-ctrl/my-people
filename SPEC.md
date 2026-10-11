@@ -284,6 +284,13 @@ that state only occurs for files created elsewhere, and such people are sorted a
 overdue (not in "Time to reach out", the overdue count or reminders).
 Dates entered as DD/MM or DD/MM/YYYY (French/European order) and stored as MM-DD / YYYY-MM-DD.
 
+**Dates and times** (device preference, *Settings → This device*): date format `DD/MM/YYYY`, `MM/DD/YYYY`,
+`YYYY-MM-DD` or month as a word (`8 Jan 2027`); time format 24-hour or 12-hour (reminder hour list). Stored in
+`localStorage` (`mp.datefmt`, `mp.timefmt`); files always store ISO dates. Date fields (`src/app/views/datefield.js`,
+`src/core/datefmt.js`) open the numeric keypad and add the separators while typing (`0801` → `08/01`, a lone `8` →
+`08`); an **Aa/123** button switches to the full keyboard, and a month written as a word (English or French, any
+position) is always understood. "Ask about" lines keep their own day-first date syntax.
+
 **Everyone search** also matches notes, follow-ups, gifts and log lines; a row then shows where it matched.
 
 **Settings → Your data**: *Download a backup (.zip)* (all people files + settings, built on the device, stored

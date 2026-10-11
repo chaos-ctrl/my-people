@@ -24,7 +24,7 @@ const MONTH_WORDS = new Map(Object.entries({
   august: 8, aug: 8, aout: 8, september: 9, sep: 9, sept: 9, septembre: 9, october: 10, oct: 10, octobre: 10,
   november: 11, nov: 11, novembre: 11, december: 12, dec: 12, decembre: 12,
 }));
-const monthOf = word => MONTH_WORDS.get(normalise(word)) ?? null;
+export const monthOf = word => MONTH_WORDS.get(normalise(word)) ?? null;
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 /** Nearest year for a day/month without year: the occurrence closest to `today`. */

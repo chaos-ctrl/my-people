@@ -4,7 +4,8 @@
 
 import { h, toast, modal } from '../dom.js';
 import { logContact, createPersonText, CONTACT_TYPES, CONTACTS_CAP } from '../../core/model.js';
-import { formatDayFirst, addDays } from '../../core/dates.js';
+import { addDays } from '../../core/dates.js';
+import { formatDate } from '../../core/datefmt.js';
 import { firstName } from '../../core/text.js';
 import { FREQUENCY_PRESETS } from '../../core/settings.js';
 import { fromPickedContacts } from '../../core/phone-contacts.js';
@@ -78,7 +79,7 @@ export function createImports(ctx) {
     const lastLabel = h('span');
     const allLabel = h('span');
     const radio = (value, label, checked) => h('label.check', h('input', { type: 'radio', name: 'wa-what', value, checked }), label);
-    const summary = `${parsed.messages} message${parsed.messages === 1 ? '' : 's'} on ${parsed.days.length} day${parsed.days.length === 1 ? '' : 's'}, the last on ${formatDayFirst(last)}.`;
+    const summary = `${parsed.messages} message${parsed.messages === 1 ? '' : 's'} on ${parsed.days.length} day${parsed.days.length === 1 ? '' : 's'}, the last on ${formatDate(last)}.`;
 
     // Days not logged yet for the chosen person (any type counts), newest first.
     const newDays = () => {
@@ -92,7 +93,7 @@ export function createImports(ctx) {
     function update() {
       const p = ctx.store.person(select.value);
       const logged = new Set((p?.contacts ?? []).map(c => c.date));
-      lastLabel.textContent = `The last day only (${formatDayFirst(last)})${logged.has(last) ? ', already logged' : ''}`;
+      lastLabel.textContent = `The last day only (${formatDate(last)})${logged.has(last) ? ', already logged' : ''}`;
       const n = p ? newDays().length : parsed.days.length;
       allLabel.textContent = `Every day with messages not logged yet (${n} day${n === 1 ? '' : 's'})`;
     }
@@ -117,7 +118,7 @@ export function createImports(ctx) {
         if (!days.length) { toast(`Already logged for ${firstName(p.name)}.`); return; }
         await ctx.store.updatePerson(p.slug, t => days.reduce((text, date) => logContact(text, { date, type: 'message' }), t),
           `Log WhatsApp ${days.length === 1 ? 'message' : `messages (${days.length} days)`} with ${p.name}`);
-        toast(days.length === 1 ? `Logged a message with ${firstName(p.name)} on ${formatDayFirst(days[0])}.` : `Logged messages with ${firstName(p.name)} on ${days.length} days.`);
+        toast(days.length === 1 ? `Logged a message with ${firstName(p.name)} on ${formatDate(days[0])}.` : `Logged messages with ${firstName(p.name)} on ${days.length} days.`);
       },
     });
   }

@@ -86,8 +86,16 @@ Keep it short: decisions and status, not a diary.
 - [x] Search: "Everyone" search already covered notes; rows now show a snippet of where it matched.
 - [x] Health check: `src/core/health.js`, `scripts/check-data.mjs`, Settings → Check my data. e2e: `e2e6.mjs`.
 
+### Phase 8 (Oct 2026, user feedback after first setup attempt)
+- [x] Date entry: numeric keypad with auto-inserted separators and padding, Aa/123 keyboard toggle, month words
+      (EN/FR) accepted anywhere; device preferences for date format (dmy/mdy/ymd/text) and time format (24h/12h)
+      (`src/core/datefmt.js`, `src/app/views/datefield.js`; e2e in `e2e6.mjs`). "Ask about" lines stay day-first.
+- [x] Person form: "With" renamed "Anniversary with" with a hint (it is not about divorce/children: it's the name
+      shown for the wedding anniversary when it differs from Partner or Partner is empty).
+- [x] SETUP.md: says where the two workflow files are (`data-repo-template/.github/workflows/`).
+
 ## User to-do (remind them)
-1. Merge `claude/tender-faraday-p0mm31` (Phase 7, on top of everything merged so far) into `main`: docs/SETUP.md, "Merging new work".
+1. Merge `claude/tender-faraday-p0mm31` (Phase 8: date entry) into `main`: docs/SETUP.md, "Merging new work".
 2. Follow docs/SETUP.md steps 1–9 (Pages, `stable` branch, data repo + template files, token, app, ntfy,
    secrets, calendar address, home screen, test).
 3. Optional: set up the AI connector (docs/SETUP.md step 10: Cloudflare + GitHub App, ~20 min).

@@ -1,5 +1,6 @@
 // App controller: views, unlocking, auto-lock, and wiring between screens.
 
+import { setDateFormat, setTimeFormat } from '../core/datefmt.js';
 import { $, $$, h, fill, toast, closeAllDialogs, openDialog } from './dom.js';
 import { GitHub, GitHubError } from './github.js';
 import { Store } from './store.js';
@@ -62,6 +63,11 @@ const ctx = {
   get imports() { return imports; },
   go: hash => { if (location.hash === hash) route(); else location.hash = hash; },
 };
+
+try {
+  setDateFormat(localStorage.getItem('mp.datefmt'));
+  setTimeFormat(localStorage.getItem('mp.timefmt'));
+} catch { /* defaults */ }
 
 const home = createHome(ctx);
 const sheet = createSheet(ctx);
